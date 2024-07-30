@@ -13,6 +13,8 @@ RUN pip install openai
 
 RUN pip install flask
 
+RUN pip install flask-cors
+
 RUN apt install -y screen
 
 RUN pip install python-dotenv
