@@ -1,0 +1,24 @@
+# /etc/crontab: system-wide crontab
+# Unlike any other crontab you don't have to run the `crontab'
+# command to install the new version when you edit this file
+# and files in /etc/cron.d. These files also have username fields,
+# that none of the other crontabs do.
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# m h dom mon dow user	command
+17 *	* * *	root    cd / && run-parts --report /etc/cron.hourly
+25 6	* * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
+47 6	* * 7	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
+52 6	1 * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
+#
+
+# Why am i doing echo "hello world"
+# This is used to test if cron is running or not
+# Inside the php5 docker I can give the command tail -f /var/log/cron.log to see if the message hello world has been printed inside it.
+#* * * * * root echo "Hello world" >> /var/log/cron.log 2>&1
+
+#Run following script run at 02:00am PST on every Saturday to check and auto renew ssl certificate from letsencrypt for advisorai.us:
+0  9  *  *  6  root /bin/bash /gt/gt-prog-repos/webapp/nginxproxy-sd/certbot/command-to-get-certificate-for-chat.advisorai.us.sh
+

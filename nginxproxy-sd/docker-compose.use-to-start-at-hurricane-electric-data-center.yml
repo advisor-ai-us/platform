@@ -1,0 +1,28 @@
+version: '2'
+services:
+  nginxdocker:
+    build: ./build-context/
+    # Sharing host /dev/shm Reasons 1. One less mount on host 2. More /dev/shm available to container 3. One container uses less another more over a group it normalizes 
+    ipc: host
+    container_name: nginxproxy-sd-server
+    networks:
+         - finance
+    volumes:
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd:/gt/gt-prog-repos/webapp/nginxproxy-sd
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/var-www-html:/var/www/html
+      - /gt/gt-prog-repos/webapp:/gt/gt-prog-repos/webapp
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/etc-supervisor-conf.d-cron-nginx-services.conf:/etc/supervisor/conf.d/cron-nginx-services.conf
+      #- /gt/gt-prog-repos/webapp/nginxproxy-sd/trusted-ip-addresses-allowed-to-access-secure-locations/etc-supervisor-conf.d-update-allowed-ips.conf:/etc/supervisor/conf.d/update-allowed-ips.conf
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/etc-nginx-nginx.conf:/etc/nginx/nginx.conf
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/nginx-allow-cors-config.toinclude:/etc/nginx/conf.d/allow-cors-config.toinclude
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/certbot/crontab:/etc/crontab                               #This crontab file auto renew the Letsencrypt ssl certificates
+      - /gt/gt-prog-repos/webapp/nginxproxy-sd/certbot/etc-letsencrypt:/etc/letsencrypt                            #This is to check Letsencrypt ssl certificates file.
+    restart: unless-stopped
+    ports:
+         - "184.105.149.6:80:80"
+         - "184.105.149.6:443:443"
+
+networks:
+  finance:
+    external:
+      name: finance_default

@@ -1,0 +1,25 @@
+version: "2"
+services:
+  server:
+    build: ./build-context/
+    # Sharing host /dev/shm Reasons 1. One less mount on host 2. More /dev/shm available to container 3. One container uses less another more over a group it normalizes
+    ipc: host
+    privileged: true
+    container_name: advisor-ai-app
+    ulimits:
+      nofile:
+        soft: 1000000
+        hard: 1000000
+    networks:
+      - finance
+    environment:
+      - FROM_SHELL_RUN_ENVIRONMENT_IS_DEV=${FROM_SHELL_RUN_ENVIRONMENT_IS_DEV}
+    volumes:
+      - /gt/gt-prog-repos/webapp/step1-advisor-ai-app:/gt/gt-prog-repos/webapp/step1-advisor-ai-app
+      - /gt/gt-prog-repos/webapp/step1-advisor-ai-app/etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
+      - /gt/gt-prog-repos/webapp/step1-advisor-ai-app/dashboard:/var/www/html
+
+networks:
+  finance:
+    external:
+      name: finance_default

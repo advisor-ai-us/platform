@@ -1,0 +1,1169 @@
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+import openai
+from openai import OpenAI
+from openai import AzureOpenAI
+import os
+import re
+import hmac
+import hashlib
+import base64
+import json
+import time
+import datetime
+import sqlite3
+import logging
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+from system_prompts import INVESTMENT_GURU_PROMPT, DASHBOARD_PROMPT
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
+# Load environment variables from .env file
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL')
+
+OPENAI_AZURE_API_VERSION = os.getenv('OPENAI_AZURE_API_VERSION')
+OPENAI_AZURE_API_BASE_URL = os.getenv('OPENAI_AZURE_API_BASE_URL')
+OPENAI_AZURE_API_KEY = os.getenv('OPENAI_AZURE_API_KEY')
+OPENAI_AZURE_API_ENGINE = os.getenv('OPENAI_AZURE_API_ENGINE')
+
+# Enable CORS only in development environment
+if os.getenv('FLASK_ENV') == 'development':
+    database_path = 'databases/dev/'
+    CORS(app)
+else:
+    database_path = 'databases/prod/'
+
+def md5_hash(text):
+    return hashlib.md5(text.encode()).hexdigest()
+
+def generate_token(payload, secret):
+    header = {"alg": "HS256", "typ": "JWT"}
+    header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+    payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    signature = hmac.new(secret.encode(), f"{header_encoded}.{payload_encoded}".encode(), hashlib.sha256).digest()
+    signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
+    return f"{header_encoded}.{payload_encoded}.{signature_encoded}"
+
+def decode_token_and_get_email(token):
+    try:
+        header_encoded, payload_encoded, signature_encoded = token.split('.')
+        payload = json.loads(base64.urlsafe_b64decode(payload_encoded + '==').decode())
+        return payload.get('userEmail')
+    except (ValueError, KeyError):
+        return None
+
+def get_response_from_ai_gpt_4_32k(messages):
+    client = AzureOpenAI(
+        api_key=OPENAI_AZURE_API_KEY,
+        api_version=OPENAI_AZURE_API_VERSION,
+        azure_endpoint=OPENAI_AZURE_API_BASE_URL
+    )
+
+    try:
+        responseFromAi = client.chat.completions.create(
+            model=OPENAI_AZURE_API_ENGINE,
+            messages=messages
+        )
+    except Exception as e:
+        responseFromAi = str(e)
+
+    return responseFromAi
+
+def get_response_from_openai(api_key, model, messages):
+    client = OpenAI(api_key=api_key)
+    
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages
+        )
+        return response
+    except Exception as e:
+        return str(e)
+
+# Create users database if it doesn't exist
+def init_users_db():
+    db_name = os.path.join(database_path, "users.db")
+    if not os.path.exists(database_path):
+        os.makedirs(database_path)
+    
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  email TEXT UNIQUE NOT NULL,
+                  full_name TEXT NOT NULL,
+                  password TEXT NOT NULL,
+                  openai_api_key TEXT DEFAULT NULL,
+                  openai_model TEXT DEFAULT NULL,
+                  about_yourself TEXT,
+                  biggest_problem TEXT,
+                  is_waitlist BOOLEAN DEFAULT FALSE,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+init_users_db()
+
+def get_user_db(email):
+    db_folder = os.path.join(database_path, email)
+    if not os.path.exists(db_folder):
+        os.makedirs(db_folder)
+        
+    #props_db_name = os.path.join(db_folder, "memory.db")
+    db_name = os.path.join(db_folder, "all_user_data.db")
+    
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS basic_memory
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 key TEXT NOT NULL,
+                 value TEXT NOT NULL, 
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+    
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS conversation_history
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 role TEXT NOT NULL,
+                 content TEXT NOT NULL,
+                 display_on_page TEXT DEFAULT NULL,
+                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the dashboard data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS dashboard 
+                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  key TEXT NOT NULL, 
+                  value TEXT NOT NULL, 
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+    
+    # Create a table to store the assets data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS assets
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 parent_id INTEGER NOT NULL,
+                 asset TEXT NOT NULL,
+                 qty TEXT NOT NULL,
+                 price TEXT NOT NULL,
+                 value TEXT DEFAULT NULL,
+                 account TEXT DEFAULT NULL,
+                 row_start INTEGER NOT NULL,
+                 row_end INTEGER DEFAULT NULL,
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the account data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS accounts
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 name TEXT NOT NULL,
+                 account_number TEXT NOT NULL,
+                 is_it_active TEXT NOT NULL,
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the graph data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS graph_data
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 key TEXT NOT NULL,
+                 value TEXT NOT NULL,
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the recommendations data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS recommendations
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 recommendation TEXT NOT NULL,
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    return db_name
+
+def get_system_prompt_with_latest_facts(systemPrompt, email):    
+    # replace the placeholder with the latest facts known about the user and the dashboard data. placeholder is [USER_FACTS] and [DASHBOARD_DATA]
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM basic_memory")
+    rows = c.fetchall()
+    conn.close()
+
+    if not rows:
+        user_facts = "There are no facts known about the user."
+    elif len(rows) > 0:
+        user_facts = "The facts known about the user are: "
+        for key, value in rows:
+            user_facts += f"{key}: {value}, "
+
+    # Get dashboard data from database
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM dashboard")
+    rows = c.fetchall()
+    conn.close()
+
+    if not rows:
+        dashboard_data = "\"dashboard\": {\"goal\": { \"box_content\": \"not enough information\", }, \"recommendations\": { \"box_content\": \"not enough information\", }, \"assets/liabilities\": { \"box_content\": \"not enough information\", }, \"income/expense\": { \"box_content\": \"not enough information\", } }"
+    elif len(rows) > 0:
+        dashboard_data = "dashboard: "
+        for key, value in rows:
+            dashboard_data += f'{{"{key}": {{"box_content": "{value}"}}}} '
+
+    systemPrompt = systemPrompt.replace("[USER_FACTS]", user_facts)
+    systemPrompt = systemPrompt.replace("[DASHBOARD_DATA]", dashboard_data)
+
+    return [{"role": "system", "content": systemPrompt}]
+      
+def get_system_prompt_with_latest_assets(systemPrompt, email):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT asset, qty, price, value, account FROM assets WHERE row_end IS NULL")
+    rows = c.fetchall()
+    conn.close()
+
+    if not rows:
+        assets_data = "There are no assets known about the user."
+    elif len(rows) > 0:
+        assets_data = "["
+        for row in rows:
+            assets_data += f'{{"asset": "{row[0]}", "qty": {row[1]}, "price": {row[2]}, "value": {row[3]}, "account": "{row[4]}"}}'
+            if row != rows[-1]:
+                assets_data += ", "
+        assets_data += "]"
+
+    systemPrompt = systemPrompt.replace("[ASSETS_DATA]", assets_data)
+
+    # Replace [USER_FACTS] from the system prompt with the latest facts known about the user
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM basic_memory")
+    rows = c.fetchall()
+    conn.close()
+
+    if not rows:
+        user_facts = "There are no facts known about the user."
+    elif len(rows) > 0:
+        user_facts = "The facts known about the user are: "
+        for key, value in rows:
+            user_facts += f"{key}: {value}, "
+
+    systemPrompt = systemPrompt.replace("[USER_BASIC_MEMORY]", user_facts)
+
+    return [{"role": "system", "content": systemPrompt}]
+
+def save_conversation(email, role, content, display_on_page):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("INSERT INTO conversation_history (role, content, display_on_page) VALUES (?, ?, ?)", (role, content, display_on_page))
+    conn.commit()
+    conn.close()
+
+def extract_json_from_text(text):
+    try:
+        # Use regex to find the JSON object within the text
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            json_part = match.group(0)
+            return json.loads(json_part)
+        else:
+            print("ERROR: JSON part not found in the response")
+            return None
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+def extract_analysis_json_from_text(text):
+    # Initialize a counter for open and close braces
+    open_braces = 0
+    json_str = ""
+    inside_json = False
+    
+    try:
+        for char in text:
+            if char == '{':
+                open_braces += 1
+                inside_json = True
+            if inside_json:
+                json_str += char
+            if char == '}':
+                open_braces -= 1
+            if inside_json and open_braces == 0:
+                break
+        
+        if json_str:
+            return json.loads(json_str)
+        else:
+            logging.error("ERROR: JSON part not found in the response")
+            return None
+    except (ValueError, json.JSONDecodeError) as e:
+        logging.error(f"ERROR: JSON decoding failed with error: {e}")
+        return None
+
+@app.route('/acr/ai_request', methods=['GET', 'POST'])
+def ai_request():
+    if request.method == 'GET':
+        userEmail = request.args.get('userEmail')
+        message = request.args.get('message')
+        token = request.args.get('token')
+        display_on_page = request.args.get('display_on_page')
+    elif request.method == 'POST':
+        data = request.get_json()
+        userEmail = data.get('userEmail')
+        message = data.get('message')
+        token = data.get('token')
+        display_on_page = data.get('display_on_page')
+
+    if not userEmail:
+        return jsonify({"error": "Email parameter is required"}), 400
+
+    if not message:
+        return jsonify({"error": "Message parameter is required"}), 400
+
+    if not token:
+        return jsonify({"error": "Token parameter is required"}), 400
+
+    if not decode_token_and_get_email(token) == userEmail:
+        return jsonify({"error": "Invalid token"}), 401
+
+    response = None
+    if display_on_page == 'dashboard':
+        response = ai_request_on_dashboard(userEmail, message, display_on_page)
+
+    elif display_on_page == 'investment-guru':
+        response = ai_request_investment_guru(userEmail, message, display_on_page)
+
+    return response
+
+def ai_request_on_dashboard(userEmail, message, display_on_page):
+  text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_facts(DASHBOARD_PROMPT, userEmail)
+  text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+
+  # get openai apikey and model from user database if available else use the default values
+  db_name1 = os.path.join(database_path, "users.db")
+  conn1 = sqlite3.connect(db_name1)
+  c1 = conn1.cursor()
+  c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+  row1 = c1.fetchone()
+  conn1.close()
+
+  # if openai apikey and model are available in the database use them else use the default values
+  if row1 and row1[0] and row1[1]:
+    apiKey = row1[0]
+    model = row1[1]
+  else:
+    apiKey = OPENAI_API_KEY
+    model = OPENAI_MODEL
+
+  response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+
+  if response.choices[0].message.content:
+    responseData = ''
+    content = response.choices[0].message.content
+    responseData = extract_json_from_text(content)
+
+    if not responseData:
+        logging.error("JSON part not found or error parsing JSON in the response")
+        responseData = {"MsgForUser": content, "memory": {}}
+
+    # Ensure responseData is a dictionary before accessing keys
+    if isinstance(responseData, dict):
+        MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+        if MsgForUser != "An error occurred. Please try again.":
+            save_conversation(userEmail, "user", message, display_on_page)
+            save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+
+            memory = responseData.get('memory')
+            save_memory(userEmail, memory)
+
+            # save dashboard data
+            dashboard = responseData.get('dashboard')
+            save_dashboard_data(userEmail, dashboard)
+    else:
+        MsgForUser = "An error occurred. Please try again."
+
+    # Get dashboard data from database and return it in the response
+    db_name = get_user_db(userEmail)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM dashboard")
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "dashboard": [{"key": key, "value": value} for key, value in rows], "model": model})
+  else:
+    return jsonify({"response": response})
+
+def ai_request_investment_guru(userEmail, message, display_on_page):
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_assets(INVESTMENT_GURU_PROMPT, userEmail)
+    text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+    
+    # get openai apikey and model from user database if available else use the default values
+    db_name1 = os.path.join(database_path, "users.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+    
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+    
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+    
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {response}")
+        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+    
+    if response.choices and response.choices[0].message.content:
+        responseData = ''
+        content = response.choices[0].message.content
+        responseData = extract_json_from_text(content)
+    
+        if not responseData:
+            logging.error("JSON part not found or error parsing JSON in the response")
+            responseData = {"MsgForUser": content, "graph_data": {}, "recommendations": []}
+
+        # Ensure responseData is a dictionary before accessing keys
+        if isinstance(responseData, dict):
+            MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+            if MsgForUser != "An error occurred. Please try again.":
+                save_conversation(userEmail, "user", message, display_on_page)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+    
+                graph_data = responseData.get('graph_data')
+                save_graph_data(userEmail, graph_data)
+    
+                # save recommendations data
+                recommendations = responseData.get('recommendations')
+                save_recommendations(userEmail, recommendations)
+
+                # Handle asset updates
+                update_assets = responseData.get('update_assets')
+                if update_assets:
+                    handle_asset_update(userEmail, update_assets)
+
+                # save memory
+                memory = responseData.get('memory')
+                save_memory(userEmail, memory)
+        else:
+            MsgForUser = "An error occurred. Please try again."
+
+        # Get graph data and recommendations from database and return it in the response
+        db_name = get_user_db(userEmail)
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT key, value FROM graph_data")
+        rows = c.fetchall()
+        conn.close()
+
+        # Get recommendations from database
+        conn1 = sqlite3.connect(db_name)
+        c1 = conn1.cursor()
+        c1.execute("SELECT recommendation FROM recommendations")
+        recommendations = c1.fetchall()
+        conn1.close()
+
+        # Get assets data from database
+        conn2 = sqlite3.connect(db_name)
+        c2 = conn2.cursor()
+        c2.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at DESC")
+        assetsData = c2.fetchall()
+        conn2.close()
+
+        return jsonify({"response": MsgForUser, 
+                        "responseData": content, 
+                        "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, 
+                        "graph_data": [{"key": key, "value": value} for key, value in rows], 
+                        "recommendations": [recommendation[0] for recommendation in recommendations], 
+                        "model": model,
+                        "assets": [{"id": row[0], "parent_id": row[1], "asset": row[2], "qty": row[3], "price": row[4], "value": row[5], "account": row[6], "row_start": row[7], "row_end": row[8]} for row in assetsData]
+                    })
+    else:
+        logging.error("Unexpected response format from OpenAI API")
+        return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
+        
+def handle_asset_update(userEmail, update_assets):
+    action = update_assets.get('action')
+    asset = update_assets.get('asset')
+    qty = update_assets.get('qty')
+    price = update_assets.get('price')
+    value = update_assets.get('value')
+    account = update_assets.get('account')
+    
+    db_name = get_user_db(userEmail)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+
+    if action == 'add_asset':
+        c.execute("INSERT INTO assets (parent_id, asset, qty, price, value, account, row_start) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                  (0, asset, qty, price, value, account, current_time_ms))
+        conn.commit()
+
+        last_id = c.lastrowid
+        c.execute("UPDATE assets SET parent_id = ? WHERE id = ?", (last_id, last_id))
+        conn.commit()
+        conn.close()
+
+        logging.info(f"Added new asset for user {userEmail}: {asset}")
+    elif action == 'edit_asset':
+        c.execute("SELECT id FROM assets WHERE asset = ? AND row_end IS NULL", (asset,))
+        row = c.fetchone()
+        if row:
+            asset_id = row[0]
+            c.execute("UPDATE assets SET qty = ?, price = ?, value = ?, account = ? WHERE id = ?", (qty, price, value, account, asset_id))
+            conn.commit()
+            conn.close()
+
+            logging.info(f"Edited asset for user {userEmail}: {asset}")
+        else:
+            logging.error(f"Asset not found for user {userEmail}: {asset}")
+
+def save_dashboard_data(email, dashboard):
+    if dashboard:
+        # Database operations
+        db_name = get_user_db(email)
+        conn1 = sqlite3.connect(db_name)
+        c1 = conn1.cursor()
+
+        for key, value in dashboard.items():
+            if isinstance(value, dict) and 'box_content' in value:
+                # Check if the key already exists in the dashboard table
+                c1.execute("SELECT 1 FROM dashboard WHERE key = ?", (key,))
+                exists = c1.fetchone()
+
+                if exists:
+                    # If the key exists, update the value
+                    c1.execute("UPDATE dashboard SET value = ? WHERE key = ?", (value['box_content'], key))
+                else:
+                    # If the key does not exist, insert a new key-value pair
+                    c1.execute("INSERT INTO dashboard (key, value) VALUES (?, ?)", (key, value['box_content']))
+            else:
+                print(f"Invalid value for key '{key}': Expected a dictionary with 'box_content'")
+
+        conn1.commit()
+        conn1.close()
+    else:
+        print("Dashboard key is missing in responseData")
+
+def save_memory(email, memory):
+    if memory:
+        action = memory.pop('Action', None)  # Remove the action key and get its value
+        if action:
+            # Database operations
+            db_name = get_user_db(email)
+            conn1 = sqlite3.connect(db_name)
+            c1 = conn1.cursor()
+
+            for key, value in memory.items():
+                if not isinstance(key, str):
+                    key = str(key)
+                if not isinstance(value, str):
+                    value = str(value)
+
+                # Check if the key already exists in the memory table
+                c1.execute("SELECT 1 FROM basic_memory WHERE key = ?", (key,))
+                exists = c1.fetchone()
+
+                if action == 'add':
+                    if exists:
+                        # If the key exists, update the value
+                        c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                    else:
+                        # If the key does not exist, insert a new key-value pair
+                        c1.execute("INSERT INTO basic_memory (key, value) VALUES (?, ?)", (key, value))
+                elif action == 'edit':
+                    if exists:
+                        # If the key exists, update the value
+                        c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                    else:
+                        print(f"Key '{key}' does not exist in the basic_memory table to edit.")
+                elif action == 'delete':
+                    if exists:
+                        # If the key exists, delete the row
+                        c1.execute("DELETE FROM basic_memory WHERE key = ?", (key,))
+                    else:
+                        print(f"Key '{key}' does not exist in the basic_memory table to delete.")
+
+            conn1.commit()
+            conn1.close()
+        else:
+            print("Action key is missing in the memory object")
+    else:
+        print("Memory key is missing in responseData")
+
+def save_graph_data(email, graph_data):
+    if graph_data:
+        db_name = get_user_db(email)
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        for key, value in graph_data.items():
+            if key == "line_chart":
+                c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("line_chart_labels",))
+                exists = c.fetchone()
+                if exists:
+                    c.execute("UPDATE graph_data SET value = ? WHERE key = ?", (json.dumps(value["x_axis"]), "line_chart_labels"))
+                else:
+                    c.execute("INSERT INTO graph_data (key, value) VALUES (?, ?)", ("line_chart_labels", json.dumps(value["x_axis"])))
+
+                c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("line_chart_values",))
+                exists = c.fetchone()
+                if exists:
+                    c.execute("UPDATE graph_data SET value = ? WHERE key = ?", (json.dumps(value["y_axis"]), "line_chart_values"))
+                else:
+                    c.execute("INSERT INTO graph_data (key, value) VALUES (?, ?)", ("line_chart_values", json.dumps(value["y_axis"])))
+
+            elif key == "pie_chart":
+                c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("pie_chart_labels",))
+                exists = c.fetchone()
+                if exists:
+                    c.execute("UPDATE graph_data SET value = ? WHERE key = ?", (json.dumps(value["labels"]), "pie_chart_labels"))
+                else:
+                    c.execute("INSERT INTO graph_data (key, value) VALUES (?, ?)", ("pie_chart_labels", json.dumps(value["labels"])))
+
+                c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("pie_chart_data",))
+                exists = c.fetchone()
+                if exists:
+                    c.execute("UPDATE graph_data SET value = ? WHERE key = ?", (json.dumps(value["data"]), "pie_chart_data"))
+                else:
+                    c.execute("INSERT INTO graph_data (key, value) VALUES (?, ?)", ("pie_chart_data", json.dumps(value["data"])))
+
+        conn.commit()
+        conn.close()
+    else:
+        print("Graph data key is missing in responseData")
+
+def save_recommendations(email, recommendations):
+    if recommendations:
+        db_name = get_user_db(email)
+        conn1 = sqlite3.connect(db_name)
+        c1 = conn1.cursor()
+        c1.execute("DELETE FROM recommendations")
+        conn1.commit()
+        conn1.close()
+        
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        for recommendation in recommendations:
+            c.execute("INSERT INTO recommendations (recommendation) VALUES (?)", (recommendation["recommendation"],))
+        conn.commit()
+        conn.close()
+
+@app.route('/acr/get_ig_analysis', methods=['POST'])
+def get_ig_analysis():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    # Get graph data from database
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM graph_data")
+    rows = c.fetchall()
+    conn.close()
+
+    # Get recommendations from database
+    conn1 = sqlite3.connect(db_name)
+    c1 = conn1.cursor()
+    c1.execute("SELECT recommendation FROM recommendations")
+    recommendations = c1.fetchall()
+    conn1.close()
+
+    return jsonify({"graph_data": [{"key": key, "value": value} for key, value in rows], "recommendations": [recommendation[0] for recommendation in recommendations]})
+
+@app.route('/acr/get_conversation', methods=['GET', 'POST'])
+def get_conversation():
+  if request.method == 'GET':
+    userEmail = request.args.get('userEmail')
+    token = request.args.get('token')
+    display_on_page = request.args.get('display_on_page')
+  elif request.method == 'POST':
+    data = request.get_json()
+    userEmail = data.get('userEmail')
+    token = data.get('token'),
+    display_on_page = data.get('display_on_page')
+
+  if not userEmail:
+    return jsonify({"error": "Email parameter is required"}), 400
+
+  if not token:
+    return jsonify({"error": "Token parameter is required"}), 400
+
+  if not decode_token_and_get_email(token) == userEmail:
+    return jsonify({"error": "Invalid token"}), 401
+
+  db_name = get_user_db(userEmail)
+  conn = sqlite3.connect(db_name)
+  c = conn.cursor()
+  c.execute("SELECT role, content FROM conversation_history WHERE display_on_page = ? ORDER BY timestamp", (display_on_page,))
+  rows = c.fetchall()
+  conn.close()
+
+  # get data from props table
+  db_name = get_user_db(userEmail)
+  conn1 = sqlite3.connect(db_name)
+  c1 = conn1.cursor()
+  c1.execute("SELECT key, value FROM basic_memory")
+  rows1 = c1.fetchall()
+  conn1.close()
+
+  # get data from dashboard table
+  db_name = get_user_db(userEmail)
+  conn2 = sqlite3.connect(db_name)
+  c2 = conn2.cursor()
+  c2.execute("SELECT key, value FROM dashboard")
+  rows2 = c2.fetchall()
+  conn2.close()
+
+  if not rows:
+    return jsonify({"conversation": []})
+  else:
+    return jsonify({"conversation": [{"role": role, "content": content} for role, content in rows], "basic_memory": [{"key": key, "value": value} for key, value in rows1], "dashboard": [{"key": key, "value": value} for key, value in rows2]})
+
+@app.route('/acr/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'GET':
+        userEmail = request.args.get('email')
+        fullName = request.args.get('fullName')
+        password = request.args.get('password')
+    elif request.method == 'POST':
+        data = request.get_json()
+        userEmail = data.get('email')
+        fullName = data.get('fullName')
+        password = data.get('password')
+
+    if not userEmail or not fullName or not password:
+        return jsonify({"error": "Email, full name, and password are required"}), 400
+
+    hashed_password = generate_password_hash(password)
+
+    db_name = os.path.join(database_path, "users.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    try:
+        c.execute("INSERT INTO users (email, full_name, password) VALUES (?, ?, ?)", (userEmail, fullName, hashed_password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Email already exists"}), 400
+    finally:
+        conn.close()
+
+    return jsonify({"message": "User registered successfully"}), 201
+
+@app.route('/acr/join_waitlist', methods=['POST'])
+def join_waitlist():
+    data = request.get_json()
+    full_name = data.get('fullName')
+    email = data.get('email')
+    password = data.get('password')
+    about_yourself = data.get('aboutYourself')
+    biggest_problem = data.get('biggestProblem')
+
+    if not full_name or not email or not about_yourself or not biggest_problem:
+        return jsonify({"error": "All fields are required"}), 400
+
+    db_name = os.path.join(database_path, "users.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    try:
+        hashed_password = generate_password_hash(password)
+        c.execute("INSERT INTO users (email, full_name, password, about_yourself, biggest_problem, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", (email, full_name, hashed_password, about_yourself, biggest_problem, True))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Email already exists"}), 400
+    finally:
+        conn.close()
+
+    return jsonify({"message": "Successfully joined the waitlist"}), 201
+
+@app.route('/acr/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        userEmail = request.args.get('email')
+        password = request.args.get('password')
+    elif request.method == 'POST':
+        data = request.get_json()
+        userEmail = data.get('email')
+        password = data.get('password')
+
+    if not userEmail or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    db_name = os.path.join(database_path, "users.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT password FROM users WHERE email = ? AND is_waitlist = FALSE", (userEmail,))
+    row = c.fetchone()
+    conn.close()
+
+    if row and check_password_hash(row[0], password):
+        secret_key = md5_hash(password)
+        payload = {
+            'userEmail': userEmail,
+            'exp': time.time() + 86400  # 24 hours expiration
+        }
+        token = generate_token(payload, secret_key)
+        return jsonify({"message": "Login successful", "token": token}), 200
+    else:
+        return jsonify({"error": "Invalid email or password"}), 401
+
+@app.route('/acr/validate_token', methods=['GET', 'POST'])
+def validate_token():
+    if request.method == 'GET':
+        token = request.args.get('token')
+    elif request.method == 'POST':
+        data = request.get_json()
+        token = data.get('token')
+
+    if not token:
+        return jsonify({"error": "Token is required", "valid": False}), 400
+
+    userEmail = decode_token_and_get_email(token)
+
+    if userEmail:
+        db_name = os.path.join(database_path, "users.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+
+        c.execute("SELECT full_name FROM users WHERE email = ?", (userEmail,))
+        row = c.fetchone()
+        conn.close()
+
+        if row:
+            return jsonify({"userEmail": userEmail, "fullName": row[0], "valid": True}), 200
+        else:
+            return jsonify({"error": "User not found", "valid": False}), 404
+    else:
+        return jsonify({"error": "Invalid token", "valid": False}), 401
+
+@app.route('/acr/download_db', methods=['GET'])
+def download_db():
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"error": "Token parameter is required"}), 400
+
+    userEmail = decode_token_and_get_email(token)
+    if not userEmail:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(userEmail)
+
+    return send_file(db_name, as_attachment=True, download_name=f"{userEmail}_data.db")
+
+@app.route('/acr/settings', methods=['POST'])
+def get_settings():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(database_path, "users.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"openai_api_key": row[0], "openai_model": row[1]}), 200
+    else:
+        return jsonify({"error": "User not found"}), 404
+
+@app.route('/acr/settings/openai', methods=['POST'])
+def openai_settings():
+    data = request.get_json()
+    api_key = data.get('apiKey')
+    model = data.get('model')
+    token = data.get('token')
+    email = data.get('email')
+
+    if not api_key or not model or not token or not email:
+        return jsonify({"error": "apiKey and model are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(database_path, "users.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("UPDATE users SET openai_api_key = ?, openai_model = ? WHERE email = ?", (api_key, model, email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "OpenAI settings updated successfully"}), 200
+
+@app.route('/acr/assets', methods=['GET'])
+def get_assets():
+    token = request.args.get('token')
+    email = request.args.get('email')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    slider_min = rows[-1][7] if rows else 0
+    slider_max = int(datetime.datetime.now().timestamp() * 1000)
+    return jsonify({"rows": [{"id": row[0], "parent_id": row[1], "asset": row[2], "qty": row[3], "price": row[4], "value": row[5], "account": row[6], "row_start": row[7], "row_end": row[8]} for row in rows], "slider_info": {"slider_min": slider_min, "slider_max": slider_max}})
+
+@app.route('/acr/assets/add', methods=['POST']) 
+def add_asset():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    asset = data.get('asset')
+    qty = data.get('qty')
+    price = data.get('price')
+    value = data.get('value')
+    account = data.get('account')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not asset or not qty or not price:
+        return jsonify({"error": "Asset, quantity, and price are required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # Insert the new row with a placeholder for parent_id
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+    c.execute("INSERT INTO assets (parent_id, asset, qty, price, value, account, row_start) VALUES (?, ?, ?, ?, ?, ?, ?)", (0, asset, qty, price, value, account, current_time_ms))
+    conn.commit()
+
+    # Get the last inserted row ID
+    last_id = c.lastrowid
+
+    # Update the parent_id to be the same as the primary key id of the inserted row
+    c.execute("UPDATE assets SET parent_id = ? WHERE id = ?", (last_id, last_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset added successfully"}), 201
+
+@app.route('/acr/assets/edit', methods=['POST'])
+def edit_asset():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    asset_id = data.get('id')
+    asset = data.get('asset')
+    qty = data.get('qty')
+    price = data.get('price')
+    value = data.get('value')
+    account = data.get('account')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not asset_id:
+        return jsonify({"error": "Asset ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "Asset not found"}), 404
+
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+    c.execute("UPDATE assets SET row_end = ? WHERE id = ?", (current_time_ms, asset_id))
+    conn.commit()
+
+    c.execute("INSERT INTO assets (parent_id, asset, qty, price, value, account, row_start) VALUES (?, ?, ?, ?, ?, ?, ?)", (row[1], asset, qty, price, value, account, current_time_ms))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset updated successfully"}), 200
+
+@app.route('/acr/assets/delete', methods=['POST'])
+def delete_asset():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    asset_id = data.get('id')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not asset_id:
+        return jsonify({"error": "Asset ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "Asset not found"}), 404
+
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+    c.execute("UPDATE assets SET row_end = ? WHERE id = ?", (current_time_ms, asset_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset deleted successfully"}), 200
+
+@app.route('/acr/accounts', methods=['GET'])
+def get_accounts():
+    token = request.args.get('token')
+    email = request.args.get('email')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT id, name, account_number, is_it_active FROM accounts ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([{"id": row[0], "name": row[1], "account_number": row[2], "is_it_active": row[3]} for row in rows])
+
+@app.route('/acr/accounts/add', methods=['POST'])
+def add_account():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    name = data.get('name')
+    account_number = data.get('account_number')
+    is_it_active = data.get('is_it_active')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not name or not account_number or not is_it_active:
+        return jsonify({"error": "Name, account number, and active status are required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("INSERT INTO accounts (name, account_number, is_it_active) VALUES (?, ?, ?)", (name, account_number, is_it_active))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Account added successfully"}), 201
+
+@app.route('/acr/accounts/edit', methods=['POST'])
+def edit_account():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    account_id = data.get('id')
+    name = data.get('name')
+    account_number = data.get('account_number')
+    is_it_active = data.get('is_it_active')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not account_id:
+        return jsonify({"error": "Account ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "Account not found"}), 404
+
+    c.execute("UPDATE accounts SET name = ?, account_number = ?, is_it_active = ? WHERE id = ?", (name, account_number, is_it_active, account_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Account updated successfully"}), 200
+
+@app.route('/acr/accounts/delete', methods=['POST'])
+def delete_account():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('email')
+    account_id = data.get('id')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not account_id:
+        return jsonify({"error": "Account ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "Account not found"}), 404
+
+    c.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Account deleted successfully"}), 200
+
+if __name__ == '__main__':
+    init_users_db()
+    app.run(host='0.0.0.0', port=3003, debug=True)

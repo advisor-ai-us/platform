@@ -1,0 +1,95 @@
+set $allow_origin "";
+
+    if ($http_origin ~* (https://ehr.otip.savantcare.com|https://api.paloaltoclinic.ai|https://www.simplenotetaker.com|https://app.easyaireports.com|http://localhost|https://sms.savantcare.com|https://socket.paloaltoclinic.ai|https://app.competencyrestoration.com|https://app.mymarvinai.com|wss://socketforsms.savantcare.com|https://alpha.savantcare.com)) {
+        set $allow_origin $http_origin;
+    }
+    
+if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' $allow_origin;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain; charset=utf-8';
+        add_header 'Content-Length' 0;
+        return 204;
+}
+
+add_header 'Access-Control-Allow-Origin' $allow_origin always;
+add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE' always;
+add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+add_header 'Access-Control-Allow-Credentials' 'true' always;
+
+# When your Node.js script returns a 404 response, it might not include the CORS headers that you specified in the Nginx configuration.
+# To ensure that the CORS headers are always sent, regardless of the response status code, you can add the always directive to the add_header lines in your Nginx configuration.
+
+# Testing with and without the always parameter
+
+# Without the always parameter when stream.js returns the 404
+
+#vk-tech@vk-primary-desktop-mac-mini ~/D/wayne (master)> curl -X GET -H "Origin: https://ehr.otip.savantcare.com" -I "https://zmeet.savantcare.com/get/video?patientID=44536507-2c29-457a-8662-adbbe02b7377&zoomMeetingID=344437048# 7&startAtTs=1679816728288"
+
+# HTTP/1.1 404 Not Found
+# Server: nginx
+# Date: Sun, 26 Mar 2023 07:51:31 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 19
+# Connection: keep-alive
+# X-Powered-By: Express
+# ETag: W/"13-RTcug3qQYmfWZVLVRC+F+60j/ak"
+# Access-Control-Expose-Headers: Content-Length,Content-Range
+
+# With the always parameter when stream.js returns the 404
+
+# vk-tech@vk-primary-desktop-mac-mini ~/D/wayne (master)> curl -X GET -H "Origin: https://ehr.otip.savantcare.com" -I "https://zmeet.savantcare.com/get/video?patientID=44536507-2c29-457a-8662-adbbe02b7377&zoomMeetingID=3444370487&startAtTs=1679816728288"
+
+# HTTP/1.1 404 Not Found
+# Server: nginx
+# Date: Sun, 26 Mar 2023 07:52:20 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 19
+# Connection: keep-alive
+# X-Powered-By: Express
+# ETag: W/"13-RTcug3qQYmfWZVLVRC+F+60j/ak"
+# Access-Control-Allow-Origin: https://ehr.otip.savantcare.com
+# Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE
+# Access-Control-Allow-Headers: DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range
+# Access-Control-Expose-Headers: Content-Length,Content-Range
+
+
+# to check the options parameter
+# vk-tech@vk-primary-desktop-mac-mini ~/D/wayne (master)> curl -X OPTIONS -H "Origin: https://ehr.otip.savantcare.com" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: Content-Type" -I https://zmeet.savantcare.com/get/video
+# HTTP/1.1 204 No Content
+# Server: nginx
+# Date: Sun, 26 Mar 2023 08:19:41 GMT
+# Connection: keep-alive
+# Access-Control-Allow-Origin: https://ehr.otip.savantcare.com
+# Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE
+# Access-Control-Allow-Headers: DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range
+# Access-Control-Expose-Headers: Content-Length,Content-Range
+# Access-Control-Max-Age: 1728000
+# Content-Type: text/plain; charset=utf-8
+# Content-Length: 0
+
+# to check if CORS is working you can do the following:
+
+# curl -X GET -H "Origin: https://ehr.otip.savantcare.com" -I "https://zmeet.savantcare.com/get/video-list?patientID=b1198f0a-b7e9-45ed-accd-ea6e6c6f7c45&startAtTs=1&endAtTs=2147483648000"
+# HTTP/1.1 200 OK
+# Server: nginx
+# Date: Fri, 19 May 2023 08:03:43 GMT
+# Content-Type: application/json; charset=utf-8
+# Content-Length: 139
+# Connection: keep-alive
+# X-Powered-By: Express
+# ETag: W/"8b-TifhxrrzWDdKSiQ6B5qEpDY/j+k"
+# Access-Control-Allow-Origin: https://ehr.otip.savantcare.com
+# Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE
+# Access-Control-Allow-Headers: DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range
+# Access-Control-Expose-Headers: Content-Length,Content-Range
+
+# vk-tech@vk-primary-desktop-mac-mini /V/v/o/g/s/pf-chrome-app-v22 (master)> curl -X GET \
+#                                                                                 -H "Origin: https://ehr.otip.savantcare.com" \
+#                                                                                 -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJVSUQiOjMwNTg1LCJpYXQiOjE2ODQ0ODU1MDR9.qZ-cIjQtR0Bd7HCYBmtbGpbYgQAF9APDW3Iegd2jl-8" \
+#                                                                                 -I "https://zmeet.savantcare.com/get/video-list?patientID=b1198f0a-b7e9-45ed-accd-ea6e6c6f7c45&startAtTs=1&endAtTs=2147483648000"

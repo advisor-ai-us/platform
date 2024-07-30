@@ -1,0 +1,235 @@
+body {
+    font-family: Helvetica Neue,Helvetica,PingFang SC,Hiragino Sans GB;
+    line-height: 17px;
+}
+.header-container.fin-advisor-ai {
+    background: #f9f9f9;
+    border-bottom: 1px solid #ccc;
+    height: 50px;
+}
+.header-container.fin-advisor-ai header.el-header {
+    height: auto;
+    text-align: center;
+    padding: 15px 0;
+    font-weight: 600;
+}
+.ai-assistant-webpage main.el-main {
+    padding: 0;
+}
+.layout-container {
+  position: relative;
+  height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 15px;
+  flex: 1;
+  padding: 15px;
+}
+.grid-item {
+  border: 1px solid #ccc;
+  /* display: flex;
+  align-items: center;
+  justify-content: center; */
+  background: #f9f9f9;
+  padding: 10px;
+}
+.grid-item h4 {
+  margin: 10px 0;
+}
+.grid-item div {
+  font-size: 0.8rem;
+}
+.chat-container {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  min-width: 350px;
+  background: #fff;
+  border: 1px solid #ccc;
+  transition: height 0.3s;
+  width: 30%;
+  z-index: 999;
+}
+.chat-container.minimized {
+  height: 40px;
+}
+.chat-container:not(.minimized) {
+  height: 450px;
+}
+.chat-header {
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f9f9f9;
+  cursor: pointer;
+}
+.toggle-button {
+  float: right;
+}
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.chat-messages {
+  flex: 1;
+  max-height: 358px;
+  overflow-y: auto;
+}
+.chat-message.system {
+  display: none;
+}
+.chat-message .message {
+  max-width: 75%;
+  min-width: 50px;
+}
+.chat-message {
+  display: block;
+  overflow: hidden;
+  padding: 5px 8px;
+}
+.chat-message.user .message {
+  float: right;
+  border-radius: 10px;
+  background: #f0f9eb;
+  border: 1px solid #c5e3d2;
+}
+.chat-message.assistant .message {
+  float: left;
+  background: #f4f4f4;
+  border: 1px solid #f6f6f6;
+  border-radius: 10px;
+}
+.chat-message .message {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+.profile-completion {
+  font-size: 0.9rem;
+  font-style: italic;
+}
+.advisor-personality-tabs .el-tabs__header.is-top {
+  margin-bottom: 0;
+}
+.el-dropdown-link.el-tooltip__trigger {
+  outline: none !important;
+}
+.user-details {
+  position: absolute;
+  top: 7px;
+  right: 10px;
+  background: #fff;
+  z-index: 999;
+}
+.analysis-content, .assets-content, .accounts-content {
+  padding: 20px;
+}
+.investment-guru-page .el-tabs.el-tabs--border-card {
+  margin: 15px;
+}
+.chart, .pie-chart, .recommendations {
+  margin-bottom: 20px;
+}
+.chart p, .pie-chart p {
+  text-align: center;
+}
+.recommendations h3 {
+  margin-bottom: 10px;
+}
+.chart, .pie-chart {
+  position: relative;
+  height: 200px; /* Adjust the height as needed */
+}
+/**
+  * ==============================================
+  * Login & Signup Card
+  * ==============================================
+  */
+.login-signup-card {
+  width: 450px;
+  margin: 100px auto;
+  padding: 20px;
+}
+.login-signup-card .el-form-item__label {
+  width: 100px;
+  justify-content: left;
+}
+
+/**
+ * ==============================================
+ * Dot Pulse Loading Animation
+ * ==============================================
+ */
+ .dot-pulse {
+  position: relative;
+  left: -9979px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #1976D2;
+  color: #1976D2;
+  box-shadow: 9999px 0 0 -5px;
+  animation: dot-pulse 1.5s infinite linear;
+  animation-delay: 0.25s;
+}
+.dot-pulse::before, .dot-pulse::after {
+  content: "";
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #1976D2;
+  color: #1976D2;
+}
+.dot-pulse::before {
+  box-shadow: 9984px 0 0 -5px;
+  animation: dot-pulse-before 1.5s infinite linear;
+  animation-delay: 0s;
+}
+.dot-pulse::after {
+  box-shadow: 10014px 0 0 -5px;
+  animation: dot-pulse-after 1.5s infinite linear;
+  animation-delay: 0.5s;
+}
+@keyframes dot-pulse-before {
+  0% {
+    box-shadow: 9984px 0 0 -5px;
+  }
+  30% {
+    box-shadow: 9984px 0 0 2px;
+  }
+  60%, 100% {
+    box-shadow: 9984px 0 0 -5px;
+  }
+}
+@keyframes dot-pulse {
+  0% {
+    box-shadow: 9999px 0 0 -5px;
+  }
+  30% {
+    box-shadow: 9999px 0 0 2px;
+  }
+  60%, 100% {
+    box-shadow: 9999px 0 0 -5px;
+  }
+}
+@keyframes dot-pulse-after {
+  0% {
+    box-shadow: 10014px 0 0 -5px;
+  }
+  30% {
+    box-shadow: 10014px 0 0 2px;
+  }
+  60%, 100% {
+    box-shadow: 10014px 0 0 -5px;
+  }
+}

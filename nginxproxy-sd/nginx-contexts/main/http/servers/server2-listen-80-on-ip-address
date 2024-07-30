@@ -1,0 +1,12 @@
+# Goal: Prevent people trying to probee the public IP for URLs that have vulnerability
+# for e.g. the following was found in access.log on 7th may 2018
+# 123.234.61.249 - - [07/May/2018:11:17:51 +0000] "GET /wls-wsat/CoordinatorPortType HTTP/1.1" 404 15342 "https://72.52.93.4/wls-wsat/CoordinatorPortType" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:57.0) Gecko/20100101 Firefox/57.0"
+# The URL /wls-wsat/CoordinatorPortType does not exist on the server but a automated script is probing the server public IP to see if this URL exists.
+# Since /wls-wsat/CoordinatorPortType belongs to web-logic software that has a known security bug.
+
+server {
+    listen 80;
+    server_name _;
+    return 444; # 444 is CONNECTION CLOSED WITHOUT RESPONSE
+}
+# I cannot do the same for https since The connection from a client that goes to https://foo.example.com/ cannot be accepted by anything but an SSL certificate with "foo.example.com" as one of its names. There is no opportunity to redirect until the SSL connection is accepted.

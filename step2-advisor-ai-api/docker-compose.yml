@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  server:
+    build: ./
+    privileged: true
+    container_name: advisor-ai-api 
+    environment:
+      - NODE_ENV=production
+    networks:
+      - finance
+    volumes:
+      - /gt/gt-prog-repos/webapp/step2-advisor-ai-api:/gt/gt-prog-repos/webapp/step2-advisor-ai-api
+      - ./etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
+    # ports: docker-compose is only used for prod. And in prod port forwarding is not needed since nginx is the proxy and its on the same network as this container.
+    #  - "3000:3000"
+
+networks:
+  finance:
+    external:
+      name: finance_default
