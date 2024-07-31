@@ -87,7 +87,9 @@ export default {
 
     const eventName = "update-analysis-page";
     this.emitter.on(eventName, (data) => {
-      this.assets = data.assets;
+      this.assets = data.assets.filter((row) => {
+        return row.row_end === null;
+      });
     });
   },
   methods: {

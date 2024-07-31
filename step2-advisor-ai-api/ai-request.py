@@ -243,19 +243,20 @@ def get_system_prompt_with_latest_assets(systemPrompt, email):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
-    c.execute("SELECT asset, qty, price, value, account FROM assets WHERE row_end IS NULL")
+    c.execute("SELECT * FROM assets WHERE row_end IS NULL ORDER BY created_at DESC")
     rows = c.fetchall()
     conn.close()
 
     if not rows:
         assets_data = "There are no assets known about the user."
     elif len(rows) > 0:
-        assets_data = "["
-        for row in rows:
-            assets_data += f'{{"asset": "{row[0]}", "qty": {row[1]}, "price": {row[2]}, "value": {row[3]}, "account": "{row[4]}"}}'
-            if row != rows[-1]:
-                assets_data += ", "
-        assets_data += "]"
+        assets_data = json.dumps([{"id": row[0], "parent_id": row[1], "asset": row[2], "qty": row[3], "price": row[4], "value": row[5], "account": row[6], "row_start": row[7], "row_end": row[8]} for row in rows])
+        # assets_data = "["
+        # for row in rows:
+        #     assets_data += f'{{"asset": "{row[0]}", "qty": {row[1]}, "price": {row[2]}, "value": {row[3]}, "account": "{row[4]}"}}'
+        #     if row != rows[-1]:
+        #         assets_data += ", "
+        # assets_data += "]"
 
     systemPrompt = systemPrompt.replace("[ASSETS_DATA]", assets_data)
 
@@ -631,7 +632,7 @@ def save_graph_data(email, graph_data):
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
         for key, value in graph_data.items():
-            if key == "line_chart":
+            if key == "line_chart" and value.get("x_axis") and value.get("y_axis"):
                 c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("line_chart_labels",))
                 exists = c.fetchone()
                 if exists:
@@ -646,7 +647,7 @@ def save_graph_data(email, graph_data):
                 else:
                     c.execute("INSERT INTO graph_data (key, value) VALUES (?, ?)", ("line_chart_values", json.dumps(value["y_axis"])))
 
-            elif key == "pie_chart":
+            elif key == "pie_chart" and value.get("labels") and value.get("data"):
                 c.execute("SELECT 1 FROM graph_data WHERE key = ?", ("pie_chart_labels",))
                 exists = c.fetchone()
                 if exists:

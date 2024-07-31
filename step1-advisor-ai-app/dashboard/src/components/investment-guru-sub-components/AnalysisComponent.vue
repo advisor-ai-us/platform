@@ -76,6 +76,7 @@ export default {
             const graphValue = this.graphData.find(set => set.key === key);
 
             try {
+                console.log(key, JSON.parse(graphValue.value));
                 return JSON.parse(graphValue.value);
             } catch (error) {
                 return graphValue.value;
@@ -124,7 +125,7 @@ export default {
                     datasets: [{
                         label: 'Diversification',
                         data: this.getGraphValue('pie_chart_data'),
-                        backgroundColor: ['rgb(75, 192, 192)', 'rgb(255, 99, 132)'],
+                        //backgroundColor: ['rgb(75, 192, 192)', 'rgb(255, 99, 132)'],
                     }]
                 },
                 options: {
