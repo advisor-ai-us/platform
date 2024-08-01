@@ -15,6 +15,7 @@ import sqlite3
 import logging
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+import fitz
 
 from system_prompts import INVESTMENT_GURU_PROMPT, DASHBOARD_PROMPT
 
@@ -1164,6 +1165,150 @@ def delete_account():
     conn.close()
 
     return jsonify({"message": "Account deleted successfully"}), 200
+
+@app.route('/acr/stock/upload-pdf', methods=['POST'])
+def upload_pdf():
+    token = request.form.get('token')
+    email = request.form.get('userEmail')
+    stock = request.form.get('stock')
+    heading = request.form.get('heading')
+    files = request.files.getlist('files')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not files or len(files) == 0:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    # Define the folder path to save the PDF files
+    pdf_folder = os.path.join('pdf_uploads', email, stock)
+    if not os.path.exists(pdf_folder):
+        os.makedirs(pdf_folder)
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # Dynamically create table name based on stock
+    table_name = f"{stock}_stock_pdfs"
+    c.execute(f'''CREATE TABLE IF NOT EXISTS {table_name} (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   heading TEXT DEFAULT NULL,
+                   pdf_name TEXT NOT NULL,
+                   pdf_content TEXT NOT NULL,
+                   pdf_path TEXT NOT NULL,
+                   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                 )''')
+
+    # Save PDFs and their content in the database
+    for file in files:
+        timestamp = int(datetime.datetime.now().timestamp())
+        pdf_name = f"{timestamp}_{file.filename}"
+        pdf_path = os.path.join(pdf_folder, pdf_name)
+        file.save(pdf_path)
+
+        # Extract the content of the PDF file
+        pdf_content = ""
+        with fitz.open(pdf_path) as doc:
+            for page in doc:
+                pdf_content += page.get_text()
+
+        c.execute(f"INSERT INTO {table_name} (heading, pdf_name, pdf_content, pdf_path) VALUES (?, ?, ?, ?)", (heading, pdf_name, pdf_content, pdf_path))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "PDFs uploaded successfully"}), 201
+
+@app.route('/acr/stock/get-pdfs', methods=['GET'])
+def get_pdfs():
+    token = request.args.get('token')
+    email = request.args.get('userEmail')
+    stock = request.args.get('stock')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    table_name = f"{stock}_stock_pdfs"
+    try:
+        c.execute(f"SELECT id, heading, pdf_name, pdf_content, pdf_path, created_at FROM {table_name}")
+        rows = c.fetchall()
+        conn.close()
+
+        return jsonify([{
+            "id": row[0],
+            "heading": row[1],
+            "pdf_name": row[2],
+            "pdf_content": row[3],
+            "pdf_path": row[4],
+            "created_at": row[5]
+        } for row in rows])
+    except sqlite3.OperationalError:
+        return jsonify([])
+
+@app.route('/acr/stock/pdf/update-heading', methods=['POST'])
+def update_pdf_heading():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('userEmail')
+    stock = data.get('stock')
+    pdf_id = data.get('id')
+    heading = data.get('heading')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not pdf_id:
+        return jsonify({"error": "PDF ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    table_name = f"{stock}_stock_pdfs"
+    c.execute(f"UPDATE {table_name} SET heading = ? WHERE id = ?", (heading, pdf_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "PDF heading updated successfully"}), 200
+
+@app.route('/acr/stock/pdf/delete', methods=['POST'])
+def delete_pdf():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('userEmail')
+    stock = data.get('stock')
+    pdf_id = data.get('id')
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not pdf_id:
+        return jsonify({"error": "PDF ID is required"}), 400
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    table_name = f"{stock}_stock_pdfs"
+    c.execute(f"SELECT pdf_path FROM {table_name} WHERE id = ?", (pdf_id,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "PDF not found"}), 404
+
+    pdf_path = row[0]
+    os.remove(pdf_path)
+
+    c.execute(f"DELETE FROM {table_name} WHERE id = ?", (pdf_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "PDF deleted successfully"}), 200
 
 if __name__ == '__main__':
     init_users_db()

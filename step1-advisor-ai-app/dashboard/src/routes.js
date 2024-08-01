@@ -3,6 +3,7 @@ import AdvisorPersonalityTabs from './components/AdvisorPersonalityTabsComponent
 import LoginCt from './components/LoginComponent.vue';
 import HomePageComponent from './components/HomePageComponent.vue';
 import JoinWaitlistComponent from './components/JoinWaitlistComponent.vue';
+import DiscussionComponent from './components/stock-picker/DiscussionComponent.vue';
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: '/waitlist',
     name: 'JoinWaitlist',
     component: JoinWaitlistComponent
+  },
+  {
+    path: '/:stock/discuss',
+    name: 'Discussion',
+    component: DiscussionComponent
   }
 ];
 

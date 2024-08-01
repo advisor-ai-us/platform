@@ -19,4 +19,6 @@ RUN apt install -y screen
 
 RUN pip install python-dotenv
 
+RUN pip install PyMuPDF
+
 CMD ["/usr/bin/supervisord", "-n","-c","/etc/supervisor/supervisord.conf"]
