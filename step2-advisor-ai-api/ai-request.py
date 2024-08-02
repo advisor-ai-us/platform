@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
-from system_prompts import INVESTMENT_GURU_PROMPT, DASHBOARD_PROMPT
+from system_prompts import INVESTMENT_GURU_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -202,6 +202,18 @@ def get_user_db(email):
     conn.commit()
     conn.close()
 
+    # Create a table to store the stock reports data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 stock_name TEXT NOT NULL,
+                 recommendation TEXT DEFAULT NULL,
+                 justification TEXT DEFAULT NULL,
+                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
     return db_name
 
 def get_system_prompt_with_latest_facts(systemPrompt, email):    
@@ -279,6 +291,30 @@ def get_system_prompt_with_latest_assets(systemPrompt, email):
 
     return [{"role": "system", "content": systemPrompt}]
 
+def get_system_prompt_with_financial_documents(systemPrompt, email, stock):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    table_name = f"{stock}_stock_pdfs"
+    try:
+        c.execute(f"SELECT heading, pdf_content FROM {table_name}")
+        rows = c.fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+
+    conn.close()
+
+    if not rows:
+        financial_documents = "There are no financial documents available for this stock."
+    elif len(rows) > 0:
+        financial_documents = json.dumps([{"heading": row[0], "pdf_content": row[1]} for row in rows])
+
+    systemPrompt = systemPrompt.replace("[STOCK_NAME]", stock)
+    systemPrompt = systemPrompt.replace("[FINANCIAL_DOCUMENTS]", financial_documents)
+
+    return [{"role": "system", "content": systemPrompt}]
+
 def save_conversation(email, role, content, display_on_page):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
@@ -334,12 +370,14 @@ def ai_request():
         message = request.args.get('message')
         token = request.args.get('token')
         display_on_page = request.args.get('display_on_page')
+        stock = request.args.get('stock')
     elif request.method == 'POST':
         data = request.get_json()
         userEmail = data.get('userEmail')
         message = data.get('message')
         token = data.get('token')
         display_on_page = data.get('display_on_page')
+        stock = data.get('stock')
 
     if not userEmail:
         return jsonify({"error": "Email parameter is required"}), 400
@@ -359,6 +397,9 @@ def ai_request():
 
     elif display_on_page == 'investment-guru':
         response = ai_request_investment_guru(userEmail, message, display_on_page)
+
+    elif display_on_page == 'stock-picker-discussion':
+        response = ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock)
 
     return response
 
@@ -516,6 +557,165 @@ def ai_request_investment_guru(userEmail, message, display_on_page):
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
         
+def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock):
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_financial_documents(STOCK_PICKER_DISCUSSION, userEmail, stock)
+    text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+
+    # get openai apikey and model from user database if available else use the default values
+    db_name1 = os.path.join(database_path, "users.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+    
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+    
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+
+    #return jsonify({"response": response})
+
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {response}")
+        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+
+    if response.choices and response.choices[0].message.content:
+        responseData = ''
+        content = response.choices[0].message.content
+        responseData = extract_json_from_text(content)
+
+        if not responseData:
+            logging.error("JSON part not found or error parsing JSON in the response")
+            responseData = {"MsgForUser": content}
+
+        # Ensure responseData is a dictionary before accessing keys
+        if isinstance(responseData, dict):
+            MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+            if MsgForUser != "An error occurred. Please try again.":
+                save_conversation(userEmail, "user", message, display_on_page)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+
+                # save recommendation
+                recommendation = responseData.get('recommendation')
+                save_stock_recommendations(userEmail, recommendation, stock)
+
+                # Handle justifications
+                justification = responseData.get('justification')
+                save_stock_recommendation_jusitifications(userEmail, justification, stock)
+        else:
+            MsgForUser = "An error occurred. Please try again."
+
+        # Get recommendation and justification from database and return it in the response
+        db_name = get_user_db(userEmail)
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT recommendation, justification FROM stock_reports WHERE stock_name = ?", (stock,))
+        row = c.fetchone()
+        conn.close()
+
+        recommendationData = row[0] if row else None
+        justificationData = row[1] if row else None
+
+        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model, "recommendation": recommendationData, "justification": justificationData})
+    else:
+        logging.error("Unexpected response format from OpenAI API")
+        return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
+
+def save_stock_recommendations(email, recommendations, stock):
+    if not recommendations:
+        return
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+    
+    c.execute("SELECT 1 FROM stock_reports WHERE stock_name = ?", (stock,))
+    exists = c.fetchone()
+
+    if exists:
+        c.execute("UPDATE stock_reports SET recommendation = ? WHERE stock_name = ?", (recommendations, stock))
+    else:
+        c.execute("INSERT INTO stock_reports (stock_name, recommendation, created_at) VALUES (?, ?, ?)", (stock, recommendations, current_time_ms))
+
+    conn.commit()
+    conn.close()
+
+def save_stock_recommendation_jusitifications(email, justification, stock):
+    if not justification:
+        return
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
+    
+    c.execute("SELECT 1 FROM stock_reports WHERE stock_name = ?", (stock,))
+    exists = c.fetchone()
+
+    if exists:
+        c.execute("UPDATE stock_reports SET justification = ? WHERE stock_name = ?", (justification, stock))
+    else:
+        c.execute("INSERT INTO stock_reports (stock_name, justification, created_at) VALUES (?, ?, ?)", (stock, justification, current_time_ms))
+
+    conn.commit()
+    conn.close()
+
+@app.route('/acr/stock/report', methods=['GET'])
+def get_stock_report():
+    stock = request.args.get('stock')
+    userEmail = request.args.get('userEmail')
+    token = request.args.get('token')
+    reportOfUid = request.args.get('reportOfUid')
+
+    if not token:
+        return jsonify({"error": "Token parameter is required"}), 400
+
+    if not stock:
+        return jsonify({"error": "Stock parameter is required"}), 400
+
+    if not userEmail:
+        return jsonify({"error": "Email parameter is required"}), 400
+
+    if not decode_token_and_get_email(token) == userEmail:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if reportOfUid:
+        db_name = os.path.join(database_path, "users.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT email FROM users WHERE id = ?", (reportOfUid,))
+        row = c.fetchone()
+        conn.close()
+
+        reportOfEmail = row[0] if row else None
+    else:
+        reportOfEmail = userEmail
+
+    if not reportOfEmail:
+        return jsonify({"error": "Invalid reportOfUid"}), 400
+
+    db_name = get_user_db(reportOfEmail)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT recommendation, justification FROM stock_reports WHERE stock_name = ?", (stock,))
+    row = c.fetchone()
+    conn.close()
+
+    recommendation = row[0] if row else None
+    justification = row[1] if row else None
+
+    return jsonify({"recommendation": recommendation, "justification": justification})
+
 def handle_asset_update(userEmail, update_assets):
     action = update_assets.get('action')
     asset = update_assets.get('asset')

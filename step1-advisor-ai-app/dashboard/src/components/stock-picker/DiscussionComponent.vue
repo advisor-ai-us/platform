@@ -63,7 +63,25 @@
           </el-table>
         </div>
       </el-card>
+      <el-card class="stock-picker-manage_pdf" style="margin-top: 20px;">
+        <div slot="header" class="stock-picker-manage_pdf__header">
+          <h3>Stock Report</h3>
+        </div>
+        <div class="stock-picker-manage_pdf__content">
+          <el-row>
+            <el-col :span="24">
+              <h4 style="margin-bottom: 10px;">Recommendation:</h4>
+              <p style="margin-top: 0;">{{ recommendation || 'not found' }}</p>
+            </el-col>
+            <el-col :span="24">
+              <h4 style="margin-bottom: 10px;">Justification:</h4>
+              <p style="margin-top: 0;">{{ justification || 'not found' }}</p>
+            </el-col>
+          </el-row>
+        </div>
+      </el-card>
     </div>
+    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" />
   </div>
 </template>
 
@@ -71,6 +89,7 @@
 import axios from 'axios';
 import moment from 'moment';
 import Header from '../Header.vue';
+import ChatComponent from '../ChatComponent.vue';
 
 export default {
   data() {
@@ -83,6 +102,13 @@ export default {
       allSavedPDFs: [],
       updatedHeadingValue: '',
       enterPressed: false,
+      recommendation: '',
+      justification: '',
+      reportOfUid: null,
+
+      // for chat component
+      systemPrompt: '',
+      pageName: 'stock-picker-discussion',
     };
   },
   created() {
@@ -90,6 +116,7 @@ export default {
   },
   components: {
     Header,
+    ChatComponent,
   },
   computed: {
     formattedPdfContent: function() {
@@ -101,6 +128,10 @@ export default {
   mounted() {
     this.stock = this.$route.params.stock;
 
+    if (this.$route.params.reportOfUid) {
+      this.reportOfUid = this.$route.params.reportOfUid;
+    }
+
     // if token and email are not present in localStorage, redirect to login page
     if (!localStorage.getItem('token') || !localStorage.getItem('email')) {
       this.$router.push('/login');
@@ -108,10 +139,42 @@ export default {
 
     // Get all saved PDFs for this report
     this.mfToGetAllSavedPDFs();
+
+    this.mfToGetStockReport();
+
+    // read data from event listener
+    const eventName = "update-stock-report";
+    this.emitter.on(eventName, (data) => {
+      this.recommendation = data.recommendation;
+      this.justification = data.justification;
+    });
+
+    //const encodedEmail = encodeURIComponent(email);
+    //const url = `http://localhost/${stock}/discuss/${encodedEmail}`;
   },
   methods: {
     capitalize(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
+    },
+    mfToGetStockReport() {
+      const apiUrl = this.baseUrlForApiCall + "stock/report";
+      axios.get(apiUrl, {
+        params: {
+          stock: this.stock,
+          userEmail: localStorage.getItem('email'),
+          reportOfUid: this.reportOfUid,
+          token: localStorage.getItem('token'),
+        },
+        headers: {
+          'Authorization': null,
+          'Content-Type': 'application/json',
+        },
+      }).then((response) => {
+        this.recommendation = response.data.recommendation;
+        this.justification = response.data.justification;
+      }).catch((error) => {
+        console.error('Error:', error);
+      });
     },
     mfToGetAllSavedPDFs: function() {
       const apiUrl = this.baseUrlForApiCall + "stock/get-pdfs";

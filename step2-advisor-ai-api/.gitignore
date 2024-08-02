@@ -4,3 +4,4 @@ databases/dev/*
 databases/prod/*
 .env
 venv
+pdf_uploads/*

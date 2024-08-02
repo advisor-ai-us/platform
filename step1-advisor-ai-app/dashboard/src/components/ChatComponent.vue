@@ -73,6 +73,11 @@ export default {
       type: String,
       required: true,
     },
+    stock: {
+      type: String,
+      required: false,
+      default: '',
+    },
   },
   mounted() {
     this.userEmail = localStorage.getItem('email');
@@ -190,7 +195,8 @@ export default {
         userEmail: this.userEmail,
         systemPrompt: this.systemPrompt,
         token: localStorage.getItem('token'),
-        display_on_page: this.pageName
+        display_on_page: this.pageName,
+        stock: this.stock,
       },
       {
         headers: {
@@ -218,6 +224,13 @@ export default {
 
           const eventName = "update-analysis-page";
           this.emitter.emit(eventName, { graphData, recommendations, assets });
+        }
+        else if(this.pageName === 'stock-picker-discussion') {
+          const recommendation = response.data.recommendation;
+          const justification = response.data.justification;
+
+          const eventName = "update-stock-report";
+          this.emitter.emit(eventName, { recommendation, justification });
         }
 
         this.scrollToBottom();

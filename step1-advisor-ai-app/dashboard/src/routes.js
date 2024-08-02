@@ -27,7 +27,7 @@ const routes = [
     component: JoinWaitlistComponent
   },
   {
-    path: '/:stock/discuss',
+    path: '/:stock/discuss/:reportOfUid?',
     name: 'Discussion',
     component: DiscussionComponent
   }
