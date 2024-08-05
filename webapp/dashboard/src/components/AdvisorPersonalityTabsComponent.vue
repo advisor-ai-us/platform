@@ -46,17 +46,18 @@ import StockRecommendations from './StockRecommendations.vue';
 export default {
   data() {
     return {
-      activePersonality: 'Dashboard',
+      //activePersonality: 'Dashboard',
+      activePersonality: '',
       userFullName: localStorage.getItem('fullName') || '',
       tabSettings: [
-        { name: 'Dashboard', label: 'Dashboard', enabled: true },
-        { name: 'Taxes', label: 'Tax Advisor', enabled: true },
-        { name: 'portfolio', label: 'Portfolio Performance', enabled: true },
-        { name: 'Expenses', label: 'Expense Analyst', enabled: true },
-        { name: 'Retirement', label: 'Retirement Planner', enabled: true },
-        { name: 'Legacy', label: 'Legacy Specialist', enabled: true },
-        { name: 'Files', label: 'Document Keeper', enabled: true },
-        { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: true },
+        { name: 'Dashboard', label: 'Dashboard', enabled: false },
+        { name: 'Taxes', label: 'Tax Advisor', enabled: false },
+        { name: 'portfolio', label: 'Portfolio Performance', enabled: false },
+        { name: 'Expenses', label: 'Expense Analyst', enabled: false },
+        { name: 'Retirement', label: 'Retirement Planner', enabled: false },
+        { name: 'Legacy', label: 'Legacy Specialist', enabled: false },
+        { name: 'Files', label: 'Document Keeper', enabled: false },
+        { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: false },
       ],
     };
   },
@@ -75,7 +76,11 @@ export default {
   },
   computed: {
     enabledTabs() {
-      return this.tabSettings.filter(tab => tab.enabled);
+      const enabledTabs = this.tabSettings.filter(tab => tab.enabled);
+      if (enabledTabs.length > 0) {
+        this.activePersonality = enabledTabs[0].name;
+      }
+      return enabledTabs;
     },
     currentPersonalityComponent() {
       switch (this.activePersonality) {
@@ -127,7 +132,7 @@ export default {
       if (!this.enabledTabs.find(tab => tab.name === this.activePersonality)) {
         this.activePersonality = this.enabledTabs[0].name;
       }
-
+      
       const apiUrl = this.baseUrlForApiCall + 'save_tab_settings';
       axios.post(apiUrl, {
         email: localStorage.getItem('email'),
@@ -150,8 +155,8 @@ export default {
           if (response.data.valid) {
             // Token is valid
             // Save user details to local storage
-            localStorage.setItem('email', response.data.userEmail);
-            localStorage.setItem('fullName', response.data.fullName);
+            //localStorage.setItem('email', response.data.userEmail);
+            //localStorage.setItem('fullName', response.data.fullName);
 
             // Set the user's full name
             this.userFullName = response.data.fullName;

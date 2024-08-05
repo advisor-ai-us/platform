@@ -79,7 +79,8 @@ export default {
                 console.log(key, JSON.parse(graphValue.value));
                 return JSON.parse(graphValue.value);
             } catch (error) {
-                return graphValue.value;
+                //return graphValue.value;
+                return [];
             }
         },
         createPortfolioChart() {

@@ -1047,7 +1047,7 @@ def login():
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute("SELECT password FROM users WHERE email = ? AND is_waitlist = FALSE", (userEmail,))
+    c.execute("SELECT password, full_name FROM users WHERE email = ? AND is_waitlist = FALSE", (userEmail,))
     row = c.fetchone()
     conn.close()
 
@@ -1058,7 +1058,7 @@ def login():
             'exp': time.time() + 86400  # 24 hours expiration
         }
         token = generate_token(payload, secret_key)
-        return jsonify({"message": "Login successful", "token": token}), 200
+        return jsonify({"message": "Login successful", "token": token, "fullName": row[1], "userEmail": userEmail}), 200
     else:
         return jsonify({"error": "Invalid email or password"}), 401
 

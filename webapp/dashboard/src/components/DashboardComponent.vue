@@ -17,7 +17,8 @@ export default {
     // get user email from local storage and set it to userEmail, if not available then reload the page
     this.userEmail = localStorage.getItem('email');
     if (!this.userEmail) {
-      location.reload();
+      // go to login page
+      this.$router.push({ name: 'LoginPage' });
     }
 
     // fetch data from the server

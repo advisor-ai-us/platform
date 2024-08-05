@@ -109,6 +109,8 @@
 
                 // Save token in local storage
                 localStorage.setItem('token', response.data.token);
+                localStorage.setItem('email', response.data.userEmail);
+                localStorage.setItem('fullName', response.data.fullName);
 
                 // Go to dashboard with page reload
                 this.$router.push({ name: 'AdvisorPersonalityPage' });
