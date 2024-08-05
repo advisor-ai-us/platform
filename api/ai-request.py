@@ -141,6 +141,19 @@ def get_user_db(email):
     conn.commit()
     conn.close()
 
+
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS user_settings
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  key TEXT UNIQUE NOT NULL,
+                  value TEXT NOT NULL,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+
     # Create a table to store the dashboard data
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
@@ -1509,6 +1522,54 @@ def delete_pdf():
     conn.close()
 
     return jsonify({"message": "PDF deleted successfully"}), 200
+
+@app.route('/acr/get_tab_settings', methods=['POST'])
+def get_tab_settings():
+    data = request.get_json()
+    email = data.get('email')
+    token = data.get('token')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT value FROM user_settings WHERE key = ?", ('tab_settings',))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"settings": row[0]})
+    else:
+        return jsonify({"settings": None})
+
+@app.route('/acr/save_tab_settings', methods=['POST'])
+def save_tab_settings():
+    data = request.get_json()
+    email = data.get('email')
+    token = data.get('token')
+    settings = data.get('settings')
+
+    if not email or not token or not settings:
+        return jsonify({"error": "Email, token, and settings are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO user_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+              ('tab_settings', settings))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Settings saved successfully"})
+
 
 if __name__ == '__main__':
     init_users_db()
