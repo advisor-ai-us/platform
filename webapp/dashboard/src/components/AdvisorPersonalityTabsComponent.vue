@@ -1,139 +1,185 @@
 <template>
-    <div class="advisor-personality-tabs">
-      <el-tabs v-model="activePersonality" @tab-click="handleTabClick">
-        <el-tab-pane name="Dashboard" label="Dashboard"></el-tab-pane>
-        <el-tab-pane name="Taxes" label="Tax Advisor"></el-tab-pane>
-        <el-tab-pane name="Investments" label="Investment Guru"></el-tab-pane>
-        <el-tab-pane name="Expenses" label="Expense Analyst"></el-tab-pane>
-        <el-tab-pane name="Retirement" label="Retirement Planner"></el-tab-pane>
-        <el-tab-pane name="Legacy" label="Legacy Specialist"></el-tab-pane>
-        <el-tab-pane name="Files" label="Document Keeper"></el-tab-pane>
-      </el-tabs>
-      <component :is="currentPersonalityComponent"></component>
+  <div class="advisor-personality-tabs">
+    <el-tabs v-model="activePersonality" @tab-click="handleTabClick">
+      <el-tab-pane v-for="tab in enabledTabs" :key="tab.name" :name="tab.name" :label="tab.label"></el-tab-pane>
+    </el-tabs>
+    <component :is="currentPersonalityComponent"></component>
 
-      <div class="user-details">
-        <el-dropdown @command="handleUserDropdownCommand">
-          <span class="el-dropdown-link">
-            <el-avatar size="small" src="/user-icon.png" style="vertical-align: middle;"></el-avatar>
-            {{ userFullName }}
-            <el-icon class="el-icon--right" style="vertical-align: middle;">
-              <arrow-down />
-            </el-icon>
-          </span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item>
-                <el-link :href="downloadDB" :underline="false">Download DB</el-link>
-              </el-dropdown-item>
-              <el-dropdown-item><ManageOpenAiComponent /></el-dropdown-item>
-              <el-dropdown-item command="logout">Logout</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-      
+    <div class="user-details">
+      <el-dropdown @command="handleUserDropdownCommand">
+        <span class="el-dropdown-link">
+          <el-avatar size="small" src="/user-icon.png" style="vertical-align: middle;"></el-avatar>
+          {{ userFullName }}
+          <el-icon class="el-icon--right" style="vertical-align: middle;">
+            <arrow-down />
+          </el-icon>
+        </span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item>
+              <el-link :href="downloadDB" :underline="false">Download DB</el-link>
+            </el-dropdown-item>
+            <el-dropdown-item><ManageOpenAiComponent /></el-dropdown-item>
+            <el-dropdown-item><SettingsComponent @settings-updated="updateTabSettings" /></el-dropdown-item>
+            <el-dropdown-item command="logout">Logout</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
-  </template>
-  
-  <script>
-  import axios from 'axios';
-  import { ArrowDown } from '@element-plus/icons-vue';
-  import Dashboard from './DashboardComponent.vue';
-  import TaxAdvisor from './TaxAdvisor.vue';
-  import InvestmentGuru from './InvestmentGuru.vue';
-  import ExpenseAnalyst from './ExpenseAnalyst.vue';
-  import RetirementPlanner from './RetirementPlanner.vue';
-  import LegacySpecialist from './LegacySpecialist.vue';
-  import DocumentKeeper from './DocumentKeeper.vue';
-  import ManageOpenAiComponent from './ManageOpenAiComponent.vue';
-  
-  export default {
-    data() {
-      return {
-        activePersonality: 'Taxes', // Default active personality
-        userFullName: localStorage.getItem('fullName') || '',
-      };
+  </div>
+</template>
+
+<script>
+import axios from 'axios';
+import { ArrowDown } from '@element-plus/icons-vue';
+import Dashboard from './DashboardComponent.vue';
+import TaxAdvisor from './TaxAdvisor.vue';
+import PortfolioPerformance from './PortfolioPerformance.vue';
+import ExpenseAnalyst from './ExpenseAnalyst.vue';
+import RetirementPlanner from './RetirementPlanner.vue';
+import LegacySpecialist from './LegacySpecialist.vue';
+import DocumentKeeper from './DocumentKeeper.vue';
+import ManageOpenAiComponent from './ManageOpenAiComponent.vue';
+import SettingsComponent from './SettingsComponent.vue';
+import StockRecommendations from './StockRecommendations.vue';
+
+export default {
+  data() {
+    return {
+      activePersonality: 'Dashboard',
+      userFullName: localStorage.getItem('fullName') || '',
+      tabSettings: [
+        { name: 'Dashboard', label: 'Dashboard', enabled: true },
+        { name: 'Taxes', label: 'Tax Advisor', enabled: true },
+        { name: 'portfolio', label: 'Portfolio Performance', enabled: true },
+        { name: 'Expenses', label: 'Expense Analyst', enabled: true },
+        { name: 'Retirement', label: 'Retirement Planner', enabled: true },
+        { name: 'Legacy', label: 'Legacy Specialist', enabled: true },
+        { name: 'Files', label: 'Document Keeper', enabled: true },
+        { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: true },
+      ],
+    };
+  },
+  components: {
+    ArrowDown,
+    Dashboard,
+    TaxAdvisor,
+    PortfolioPerformance,
+    ExpenseAnalyst,
+    RetirementPlanner,
+    LegacySpecialist,
+    DocumentKeeper,
+    ManageOpenAiComponent,
+    SettingsComponent,
+    StockRecommendations,
+  },
+  computed: {
+    enabledTabs() {
+      return this.tabSettings.filter(tab => tab.enabled);
     },
-    components: {
-      ArrowDown,
-      Dashboard,
-      TaxAdvisor,
-      InvestmentGuru,
-      ExpenseAnalyst,
-      RetirementPlanner,
-      LegacySpecialist,
-      DocumentKeeper,
-      ManageOpenAiComponent,
-    },
-    computed: {
-      currentPersonalityComponent() {
-        switch (this.activePersonality) {
-          case 'Dashboard': return Dashboard;
-          case 'Taxes': return TaxAdvisor;
-          case 'Investments': return InvestmentGuru;
-          case 'Expenses': return ExpenseAnalyst;
-          case 'Retirement': return RetirementPlanner;
-          case 'Legacy': return LegacySpecialist;
-          case 'Files': return DocumentKeeper;
-          default: return null;
-        }
-      },
-      downloadDB() {
-        const token = localStorage.getItem('token');
-        return `${this.baseUrlForApiCall}download_db?token=${token}`;
-      },
-    },
-    mounted() {
-      // Check if the user is logged in
-      // If not, redirect to the login page
-      const token = localStorage.getItem('token');
-      if (!token) {
-        this.$router.push({ name: 'LoginPage' });
-      } else {
-        this.validateToken(token);
+    currentPersonalityComponent() {
+      switch (this.activePersonality) {
+        case 'Dashboard': return Dashboard;
+        case 'Taxes': return TaxAdvisor;
+        case 'portfolio': return PortfolioPerformance;
+        case 'Expenses': return ExpenseAnalyst;
+        case 'Retirement': return RetirementPlanner;
+        case 'Legacy': return LegacySpecialist;
+        case 'Files': return DocumentKeeper;
+        case 'StockRecommendations': return StockRecommendations;
+        default: return null;
       }
     },
-    methods: {
-      validateToken(token) {
-        // Validate the token
-        // If the token is invalid, redirect to the login page
-        // Otherwise, continue
-        axios.post(`${this.baseUrlForApiCall}validate_token`, { token })
-          .then((response) => {
-            if (response.data.valid) {
-              // Token is valid
-              // Save user details to local storage
-              localStorage.setItem('email', response.data.userEmail);
-              localStorage.setItem('fullName', response.data.fullName);
+    downloadDB() {
+      const token = localStorage.getItem('token');
+      return `${this.baseUrlForApiCall}download_db?token=${token}`;
+    },
+  },
+  mounted() {
+    this.loadTabSettings();
+    // Check if the user is logged in
+    // If not, redirect to the login page
+    const token = localStorage.getItem('token');
+    if (!token) {
+      this.$router.push({ name: 'LoginPage' });
+    } else {
+      this.validateToken(token);
+    }
+  },
+  methods: {
+    loadTabSettings() {
+      const apiUrl = this.baseUrlForApiCall + 'get_tab_settings';
+      axios.post(apiUrl, {
+        email: localStorage.getItem('email'),
+        token: localStorage.getItem('token')
+      })
+      .then((response) => {
+        if (response.data.settings) {
+          this.tabSettings = JSON.parse(response.data.settings);
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading tab settings:', error);
+      });
+    },
+    updateTabSettings(newSettings) {
+      this.tabSettings = newSettings;
+      if (!this.enabledTabs.find(tab => tab.name === this.activePersonality)) {
+        this.activePersonality = this.enabledTabs[0].name;
+      }
 
-              // Set the user's full name
-              this.userFullName = response.data.fullName;
-            } else {
-              // Token is invalid
-              // Redirect to the login page
-              this.$router.push({ name: 'LoginPage' });
-            }
-          })
-          .catch((error) => {
+      const apiUrl = this.baseUrlForApiCall + 'save_tab_settings';
+      axios.post(apiUrl, {
+        email: localStorage.getItem('email'),
+        token: localStorage.getItem('token'),
+        settings: JSON.stringify(this.tabSettings)
+      })
+      .then(() => {
+        console.log('Tab settings saved successfully');
+      })
+      .catch((error) => {
+        console.error('Error saving tab settings:', error);
+      });
+    },
+    validateToken(token) {
+      // Validate the token
+      // If the token is invalid, redirect to the login page
+      // Otherwise, continue
+      axios.post(`${this.baseUrlForApiCall}validate_token`, { token })
+        .then((response) => {
+          if (response.data.valid) {
+            // Token is valid
+            // Save user details to local storage
+            localStorage.setItem('email', response.data.userEmail);
+            localStorage.setItem('fullName', response.data.fullName);
+
+            // Set the user's full name
+            this.userFullName = response.data.fullName;
+          } else {
+            // Token is invalid
             // Redirect to the login page
             this.$router.push({ name: 'LoginPage' });
-          });
-      },
-      handleTabClick(tab) {
-        this.activePersonality = tab.name;
-      },
-      handleUserDropdownCommand(command) {
-        if(command === 'logout') {
-          // Clear local storage
-          localStorage.removeItem('token');
-          localStorage.removeItem('email');
-          localStorage.removeItem('fullName');
-
+          }
+        })
+        .catch((error) => {
           // Redirect to the login page
           this.$router.push({ name: 'LoginPage' });
-        }
-      },
-    }
-  };
-  </script>
+        });
+    },
+    handleTabClick(tab) {
+      this.activePersonality = tab.name;
+    },
+    handleUserDropdownCommand(command) {
+      if(command === 'logout') {
+        // Clear local storage
+        localStorage.removeItem('token');
+        localStorage.removeItem('email');
+        localStorage.removeItem('fullName');
 
+        // Redirect to the login page
+        this.$router.push({ name: 'LoginPage' });
+      }
+    },
+  }
+};
+</script>

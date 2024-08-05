@@ -131,7 +131,7 @@ body {
 .analysis-content, .assets-content, .accounts-content {
   padding: 20px;
 }
-.investment-guru-page .el-tabs.el-tabs--border-card {
+.portfolio-performance-page .el-tabs.el-tabs--border-card {
   margin: 15px;
 }
 .chart, .pie-chart, .recommendations {

@@ -1,5 +1,5 @@
 <template>
-  <div class="investment-guru-page">
+  <div class="portfolio-performance-page">
     <el-tabs v-model="activeTab" type="border-card">
       <el-tab-pane label="Analysis" name="analysis">
         <div class="analysis-content">
@@ -22,9 +22,9 @@
 </template>
 
 <script>
-import AnalysisComponent from './investment-guru-sub-components/AnalysisComponent.vue';
-import AssetsComponent from './investment-guru-sub-components/AssetsComponent.vue';
-import AccountComponent from './investment-guru-sub-components/AccountComponent.vue';
+import AnalysisComponent from './portfolio-performance-sub-components/AnalysisComponent.vue';
+import AssetsComponent from './portfolio-performance-sub-components/AssetsComponent.vue';
+import AccountComponent from './portfolio-performance-sub-components/AccountComponent.vue';
 import ChatComponent from './ChatComponent.vue';
 
 export default {
@@ -32,7 +32,7 @@ export default {
     return {
       activeTab: 'analysis',
       systemPrompt: '',
-      pageName: 'investment-guru',
+      pageName: 'portfolio-performance',
     };
   },
   components: {

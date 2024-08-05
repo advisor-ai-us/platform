@@ -217,7 +217,7 @@ export default {
           const eventName = "update-dashboard-boxes";
           this.emitter.emit(eventName, this.dashboardData);
         } 
-        else if(this.pageName === 'investment-guru') {
+        else if(this.pageName === 'portfolio-performance') {
           const graphData = response.data.graph_data;
           const recommendations = response.data.recommendations;
           const assets = response.data.assets;

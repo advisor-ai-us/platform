@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
-from system_prompts import INVESTMENT_GURU_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION
+from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -395,8 +395,8 @@ def ai_request():
     if display_on_page == 'dashboard':
         response = ai_request_on_dashboard(userEmail, message, display_on_page)
 
-    elif display_on_page == 'investment-guru':
-        response = ai_request_investment_guru(userEmail, message, display_on_page)
+    elif display_on_page == 'portfolio-performance':
+        response = ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page)
 
     elif display_on_page == 'stock-picker-discussion':
         response = ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock)
@@ -462,8 +462,8 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
   else:
     return jsonify({"response": response})
 
-def ai_request_investment_guru(userEmail, message, display_on_page):
-    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_assets(INVESTMENT_GURU_PROMPT, userEmail)
+def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_assets(PORTFOLIO_PERFORMANCE_PROMPT, userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
     
     # get openai apikey and model from user database if available else use the default values

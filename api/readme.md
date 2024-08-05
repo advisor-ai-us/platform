@@ -3,7 +3,7 @@ pip install -r requirements.txt
 Goal:
 
 1. Get the communuty using and giving feedback
-    1. investments guru tab:
+    1. portfolio performance tab:
         Allow user to add accounts and assets.
         An asset may or many not belong to an account.
         So the user may add an asset like 1. google shares qty 100

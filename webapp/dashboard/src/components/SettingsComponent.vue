@@ -26,7 +26,7 @@
         tabSettings: [
           { name: 'Dashboard', label: 'Dashboard', enabled: true },
           { name: 'Taxes', label: 'Tax Advisor', enabled: true },
-          { name: 'Investments', label: 'Portfolio Performance', enabled: true },
+          { name: 'portfolio', label: 'Portfolio Performance', enabled: true },
           { name: 'Expenses', label: 'Expense Analyst', enabled: true },
           { name: 'Retirement', label: 'Retirement Planner', enabled: true },
           { name: 'Legacy', label: 'Legacy Specialist', enabled: true },
