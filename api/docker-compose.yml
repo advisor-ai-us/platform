@@ -10,7 +10,7 @@ services:
     networks:
       - finance
     volumes:
-      - /gt/gt-prog-repos/webapp/step2-advisor-ai-api:/gt/gt-prog-repos/webapp/step2-advisor-ai-api
+      - /gt/gt-prog-repos/webapp/api:/gt/gt-prog-repos/webapp/api
       - ./etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
     # ports: docker-compose is only used for prod. And in prod port forwarding is not needed since nginx is the proxy and its on the same network as this container.
     #  - "3000:3000"
