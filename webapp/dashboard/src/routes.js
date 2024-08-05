@@ -3,7 +3,8 @@ import AdvisorPersonalityTabs from './components/AdvisorPersonalityTabsComponent
 import LoginCt from './components/LoginComponent.vue';
 import HomePageComponent from './components/HomePageComponent.vue';
 import JoinWaitlistComponent from './components/JoinWaitlistComponent.vue';
-import DiscussionComponent from './components/stock-picker/DiscussionComponent.vue';
+import UserEnhancedReport from './components/stock-picker/UserEnhancedReport.vue';
+import SystemReport from './components/stock-picker/SystemReport.vue';
 
 const routes = [
   {
@@ -27,9 +28,14 @@ const routes = [
     component: JoinWaitlistComponent
   },
   {
+    path: '/:stock',
+    name: 'Report',
+    component: SystemReport
+  },
+  {
     path: '/:stock/discuss/:reportOfUid?',
-    name: 'Discussion',
-    component: DiscussionComponent
+    name: 'DiscussStockReport',
+    component: UserEnhancedReport
   }
 ];
 

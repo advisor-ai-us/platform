@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
-from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION
+from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION, STOCK_PICKER_SYSTEM_REPORT
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -90,7 +90,7 @@ def get_response_from_openai(api_key, model, messages):
 
 # Create users database if it doesn't exist
 def init_users_db():
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     if not os.path.exists(database_path):
         os.makedirs(database_path)
     
@@ -414,6 +414,9 @@ def ai_request():
     elif display_on_page == 'stock-picker-discussion':
         response = ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock)
 
+    elif display_on_page == 'stock-picker-system-report':
+        response = ai_request_stock_picker_system_report(userEmail, message, display_on_page, stock)
+
     return response
 
 def ai_request_on_dashboard(userEmail, message, display_on_page):
@@ -421,7 +424,7 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
   text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
   # get openai apikey and model from user database if available else use the default values
-  db_name1 = os.path.join(database_path, "users.db")
+  db_name1 = os.path.join(database_path, "default.db")
   conn1 = sqlite3.connect(db_name1)
   c1 = conn1.cursor()
   c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -480,7 +483,7 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
     
     # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(database_path, "users.db")
+    db_name1 = os.path.join(database_path, "default.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -575,7 +578,7 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
     # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(database_path, "users.db")
+    db_name1 = os.path.join(database_path, "default.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -636,10 +639,89 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
         recommendationData = row[0] if row else None
         justificationData = row[1] if row else None
 
+        # create a table if not already created to store the stock reports data. This table will store the user_id, stock_name, created_at
+        db_name = os.path.join(database_path, "default.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        stock_name TEXT NOT NULL,
+                        recommendation TEXT DEFAULT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+
+        # insert the stock name and user_id into the stock_reports table. user_id is the id of the user in the users table where the email is the user's email
+        c.execute("SELECT id, full_name FROM users WHERE email = ?", (userEmail,))
+        row = c.fetchone()
+        user_id = row[0] if row else None
+        user_name = row[1] if row else None
+
+        if user_id:
+            # check if the stock name already exists in the stock_reports table for the user_id
+            c.execute("SELECT 1 FROM stock_reports WHERE user_id = ? AND stock_name = ?", (user_id, stock))
+            exists = c.fetchone()
+
+            if exists:
+                # nothing to do if the stock name already exists for the user_id
+                pass
+            else:
+                c.execute("INSERT INTO stock_reports (user_id, user_name, stock_name, recommendation) VALUES (?, ?, ?, ?)", (user_id, user_name, stock, recommendationData))
+
+        conn.commit()
+        conn.close()
+
         return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model, "recommendation": recommendationData, "justification": justificationData})
     else:
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
+
+def ai_request_stock_picker_system_report(userEmail, message, display_on_page, stock):
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_financial_documents(STOCK_PICKER_SYSTEM_REPORT, userEmail, stock)
+    text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+
+    # get openai apikey and model
+    db_name1 = os.path.join(database_path, "default.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {response}")
+        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+
+    if response.choices and response.choices[0].message.content:
+        responseData = ''
+        content = response.choices[0].message.content
+        responseData = extract_json_from_text(content)
+
+        if not responseData:
+            logging.error("JSON part not found or error parsing JSON in the response")
+            responseData = {"MsgForUser": content}
+
+        # Ensure responseData is a dictionary before accessing keys
+        if isinstance(responseData, dict):
+            MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+            if MsgForUser != "An error occurred. Please try again.":
+                save_conversation(userEmail, "user", message, display_on_page)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+        else:
+            MsgForUser = "An error occurred. Please try again."
+
+        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model})
 
 def save_stock_recommendations(email, recommendations, stock):
     if not recommendations:
@@ -703,7 +785,7 @@ def get_stock_report():
         return jsonify({"error": "Invalid token"}), 401
 
     if reportOfUid:
-        db_name = os.path.join(database_path, "users.db")
+        db_name = os.path.join(database_path, "default.db")
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
         c.execute("SELECT email FROM users WHERE id = ?", (reportOfUid,))
@@ -727,7 +809,15 @@ def get_stock_report():
     recommendation = row[0] if row else None
     justification = row[1] if row else None
 
-    return jsonify({"recommendation": recommendation, "justification": justification})
+    # Get the all user_id from the stock_reports table where the stock_name is the stock.
+    db_name = os.path.join(database_path, "default.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT user_id, user_name, recommendation FROM stock_reports WHERE stock_name = ?", (stock,))
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify({"recommendation": recommendation, "justification": justification, "enhancedReportList": [{"id": row[0], "name": row[1], "recommendation": row[2]} for row in rows]})
 
 def handle_asset_update(userEmail, update_assets):
     action = update_assets.get('action')
@@ -989,7 +1079,7 @@ def signup():
 
     hashed_password = generate_password_hash(password)
 
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1015,7 +1105,7 @@ def join_waitlist():
     if not full_name or not email or not about_yourself or not biggest_problem:
         return jsonify({"error": "All fields are required"}), 400
 
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1043,7 +1133,7 @@ def login():
     if not userEmail or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1076,7 +1166,7 @@ def validate_token():
     userEmail = decode_token_and_get_email(token)
 
     if userEmail:
-        db_name = os.path.join(database_path, "users.db")
+        db_name = os.path.join(database_path, "default.db")
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
 
@@ -1114,7 +1204,7 @@ def get_settings():
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1141,7 +1231,7 @@ def openai_settings():
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "users.db")
+    db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 

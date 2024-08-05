@@ -79,6 +79,11 @@ export default {
       const enabledTabs = this.tabSettings.filter(tab => tab.enabled);
       if (enabledTabs.length > 0) {
         this.activePersonality = enabledTabs[0].name;
+      } 
+      else {
+        // If no tabs are enabled, enable the first tab
+        this.tabSettings[0].enabled = true;
+        this.activePersonality = this.tabSettings[0].name;
       }
       return enabledTabs;
     },
