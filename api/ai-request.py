@@ -819,6 +819,29 @@ def get_stock_report():
 
     return jsonify({"recommendation": recommendation, "justification": justification, "enhancedReportList": [{"id": row[0], "name": row[1], "recommendation": row[2]} for row in rows]})
 
+@app.route('/acr/stock/recommendations', methods=['GET'])
+def get_stock_recommendations():
+    userEmail = request.args.get('userEmail')
+    token = request.args.get('token')
+
+    if not token:
+        return jsonify({"error": "Token parameter is required"}), 400
+
+    if not userEmail:
+        return jsonify({"error": "Email parameter is required"}), 400
+
+    if not decode_token_and_get_email(token) == userEmail:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(database_path, "default.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT stock_name, recommendation FROM stock_reports WHERE user_id = 1")
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify({"recommendations": [{"stock": row[0], "recommendation": row[1]} for row in rows]})
+
 def handle_asset_update(userEmail, update_assets):
     action = update_assets.get('action')
     asset = update_assets.get('asset')

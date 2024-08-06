@@ -29,7 +29,7 @@ const routes = [
   },
   {
     path: '/:stock',
-    name: 'Report',
+    name: 'SystemReport',
     component: SystemReport
   },
   {
