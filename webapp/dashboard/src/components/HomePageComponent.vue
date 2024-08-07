@@ -13,35 +13,53 @@
       </el-header>
       <el-main>
         <div class="main-content">
-          <h2>Your AI Copilot for Stock Analysis</h2>
-          <p>Welcome to Advisor AI, the intelligent assistant that empowers stock analysts and investors. We're here to augment your expertise with cutting-edge AI technology.</p>
+          <h1>Welcome to advisorai.us – It's all about AI + US!</h1>
+          
+          <p>At advisorai.us, we're revolutionizing investment analysis by integrating AI with the collaborative principles of Git. Our platform allows users to harness the power of AI to analyze financial reports while also leveraging community contributions to continually refine and improve investment insights.</p>
+          
+          <h2>How It Works:</h2>
           
           <el-row :gutter="20">
             <el-col :span="12">
               <el-card class="feature-card">
-                <h3>How Advisor AI Assists You</h3>
-                <ul>
-                  <li>Real-time market data analysis</li>
-                  <li>AI-driven stock screening and filtering</li>
-                  <li>Automated financial report interpretation</li>
-                  <li>Sentiment analysis of news and social media</li>
-                </ul>
+                <h3>Upload Reports</h3>
+                <p>Users upload PDFs of financial reports, SEC filings, and other relevant documents about a company. Whether it's Google, Microsoft, or any other stock, our platform processes all types of financial data.</p>
               </el-card>
             </el-col>
             <el-col :span="12">
               <el-card class="feature-card">
-                <h3>Benefits for Analysts</h3>
-                <ul>
-                  <li>Accelerate your research process</li>
-                  <li>Uncover hidden patterns in market data</li>
-                  <li>Generate comprehensive stock reports in minutes</li>
-                  <li>Validate your hypotheses with AI-backed insights</li>
-                </ul>
+                <h3>AI Analysis</h3>
+                <p>Our advanced AI engine analyzes the uploaded documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It's like having a team of financial experts working for you around the clock.</p>
               </el-card>
             </el-col>
           </el-row>
           
-          <el-button type="primary" class="get-started-btn">Enhance Your Analysis Now</el-button>
+          <el-row :gutter="20" style="margin-top: 20px;">
+            <el-col :span="12">
+              <el-card class="feature-card">
+                <h3>Collaborate and Fork</h3>
+                <p>Similar to Git, you can fork existing reports. See an analysis you like? Fork it! Add more documents, bring in additional data, and create a personalized version of the report. This fosters a dynamic and collaborative environment where insights are continually refined.</p>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card class="feature-card">
+                <h3>Share and Improve</h3>
+                <p>Share your reports with the community, allowing others to benefit from your insights and build upon them. The more data and perspectives we gather, the smarter and more accurate our AI becomes.</p>
+              </el-card>
+            </el-col>
+          </el-row>
+          
+          <h2>Why advisorai.us?</h2>
+          
+          <ul>
+            <li><strong>Community-Driven Insights:</strong> Leverage the collective intelligence of a passionate investment community. Your inputs help create richer, more accurate analyses.</li>
+            <li><strong>Advanced AI Technology:</strong> Our AI continuously learns and adapts, providing cutting-edge financial insights and recommendations.</li>
+            <li><strong>Fun and Engaging:</strong> We make investing not just profitable but also enjoyable. Engage with the community, share your findings, and see how your contributions help others.</li>
+          </ul>
+          
+          <p>Join us at advisorai.us, where AI and US come together to make smarter investment decisions. It's all about collaboration, innovation, and making your financial journey successful and enjoyable.</p>
+          
+          <el-button type="primary" class="get-started-btn">Get Started Now</el-button>
         </div>
       </el-main>
       <el-footer>
@@ -78,6 +96,9 @@
   text-align: center;
   margin-top: 50px;
   padding: 0 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 .feature-card {
   height: 100%;
@@ -87,7 +108,7 @@
   padding-left: 20px;
 }
 .get-started-btn {
-  margin-top: 30px;
+  margin-top: 20px;
   font-size: 1.2em;
   padding: 12px 24px;
 }
@@ -152,12 +173,6 @@ h3 {
   .logo-image {
     height: 30px;
   }
-}
-
-.main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
 }
 
 h1, h2 {
