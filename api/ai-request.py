@@ -1160,11 +1160,14 @@ def login():
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute("SELECT password, full_name FROM users WHERE email = ? AND is_waitlist = FALSE", (userEmail,))
+    c.execute("SELECT password, full_name, is_waitlist FROM users WHERE email = ?", (userEmail,))
     row = c.fetchone()
     conn.close()
 
-    if row and check_password_hash(row[0], password):
+    # Check if the user is in the waitlist
+    if row and row[2]:
+        return jsonify({"error": "User is in the waitlist"}), 403
+    elif row and check_password_hash(row[0], password):
         secret_key = md5_hash(password)
         payload = {
             'userEmail': userEmail,

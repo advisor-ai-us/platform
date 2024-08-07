@@ -74,16 +74,19 @@ export default {
     SettingsComponent,
     StockRecommendations,
   },
+  props: {
+    defaultActiveTab: {
+      type: String,
+      default: '',
+      required: false,
+    },
+  },
   computed: {
     enabledTabs() {
       const enabledTabs = this.tabSettings.filter(tab => tab.enabled);
-      if (enabledTabs.length > 0) {
+      console.log('enabledTabs:', this.defaultActiveTab);
+      if (enabledTabs.length > 0 && this.defaultActiveTab !== 'none') {
         this.activePersonality = enabledTabs[0].name;
-      } 
-      else {
-        // If no tabs are enabled, enable the first tab
-        this.tabSettings[0].enabled = true;
-        this.activePersonality = this.tabSettings[0].name;
       }
       return enabledTabs;
     },
@@ -126,6 +129,13 @@ export default {
       .then((response) => {
         if (response.data.settings) {
           this.tabSettings = JSON.parse(response.data.settings);
+        } else {
+          // If no settings are found, enable where name=StockRecommendations and portfolio
+          this.tabSettings.forEach((tab) => {
+            if (tab.name === 'StockRecommendations' || tab.name === 'portfolio') {
+              tab.enabled = true;
+            }
+          });
         }
       })
       .catch((error) => {
@@ -177,7 +187,11 @@ export default {
         });
     },
     handleTabClick(tab) {
+      //this.$router.push({ name: 'AdvisorPersonalityPage' });
       this.activePersonality = tab.name;
+
+      // Call a event to update the tab
+      this.emitter.emit('update-tab-settings', this.activePersonality);
     },
     handleUserDropdownCommand(command) {
       if(command === 'logout') {

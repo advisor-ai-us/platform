@@ -64,7 +64,9 @@
           });
       },
       goToSystemReportPage(stock) {
-        this.$router.push({ name: 'SystemReport', params: { stock: stock } });
+        //this.$router.push({ name: 'SystemReport', params: { stock: stock } });
+        // go to this route with page refresh
+        window.location.href = `/${stock}`;
       },
     },
   }

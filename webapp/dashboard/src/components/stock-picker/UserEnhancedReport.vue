@@ -1,8 +1,13 @@
 <template>
   <div>
-    <Header />
-    <div class="stock-picker-content">
+    <AdvisorPersonalityTabsComponent :defaultActiveTab="`none`" />
+    <div class="stock-picker-content" v-if="!isPageDisabled">
       <h2 class="stock-picker-content__title">
+        <el-tooltip class="box-item" effect="dark" :content="`Go to ` + stock + ` report page`" placement="top-start">
+          <el-link @click="goToSystemReportPage()" style="cursor: pointer;font-size: 1.25rem;vertical-align: bottom;">
+            <el-icon><Back /></el-icon>
+          </el-link>
+        </el-tooltip>
         {{ capitalize(stock) }} AI analysis discussion
       </h2>
 
@@ -81,7 +86,7 @@
         </div>
       </el-card>
     </div>
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" />
+    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" v-if="!isPageDisabled" />
   </div>
 </template>
 
@@ -90,10 +95,13 @@ import axios from 'axios';
 import moment from 'moment';
 import Header from '../Header.vue';
 import ChatComponent from '../ChatComponent.vue';
+import AdvisorPersonalityTabsComponent from '../AdvisorPersonalityTabsComponent.vue';
+import { Back } from '@element-plus/icons-vue';
 
 export default {
   data() {
     return {
+      isPageDisabled: false,
       stock: '',
       userFullName: localStorage.getItem('fullName') || '',
       heading: '',
@@ -117,6 +125,8 @@ export default {
   components: {
     Header,
     ChatComponent,
+    AdvisorPersonalityTabsComponent,
+    Back,
   },
   computed: {
     formattedPdfContent: function() {
@@ -149,10 +159,17 @@ export default {
       this.justification = data.justification;
     });
 
-    //const encodedEmail = encodeURIComponent(email);
-    //const url = `http://localhost/${stock}/discuss/${encodedEmail}`;
+    // read update-tab-settings event
+    this.emitter.on('update-tab-settings', (tab) => {
+      if (tab !== 'none') {
+        this.isPageDisabled = true;
+      }
+    });
   },
   methods: {
+    goToSystemReportPage() {
+      this.$router.push({ name: 'SystemReport', params: { stock: this.stock } });
+    },
     capitalize(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
     },

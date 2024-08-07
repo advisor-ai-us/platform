@@ -1,7 +1,7 @@
 <template>
   <div>
-    <Header />
-    <div class="stock-picker-content">
+    <AdvisorPersonalityTabsComponent :defaultActiveTab="`none`" />
+    <div class="stock-picker-content" v-if="!isPageDisabled">
       <h2 class="stock-picker-content__title">
         {{ capitalize(stock) }} system report
       </h2>
@@ -49,10 +49,8 @@
           </el-card>
         </el-col>
       </el-row>
-
-      
     </div>
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" />
+    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" v-if="!isPageDisabled" />
   </div>
 </template>
 
@@ -61,10 +59,12 @@ import axios from 'axios';
 import moment from 'moment';
 import Header from '../Header.vue';
 import ChatComponent from '../ChatComponent.vue';
+import AdvisorPersonalityTabsComponent from '../AdvisorPersonalityTabsComponent.vue';
 
 export default {
   data() {
     return {
+      isPageDisabled: false,
       stock: '',
       userFullName: localStorage.getItem('fullName') || '',
       heading: '',
@@ -83,6 +83,7 @@ export default {
   components: {
     Header,
     ChatComponent,
+    AdvisorPersonalityTabsComponent,
   },
   computed: {
     
@@ -96,6 +97,13 @@ export default {
     }
 
     this.mfToGetStockReport();
+
+    // read update-tab-settings event
+    this.emitter.on('update-tab-settings', (tab) => {
+      if (tab !== 'none') {
+        this.isPageDisabled = true;
+      }
+    });
   },
   methods: {
     goToDiscussPage() {

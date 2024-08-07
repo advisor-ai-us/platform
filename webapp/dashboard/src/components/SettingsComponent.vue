@@ -24,14 +24,14 @@
       return {
         dialogVisible: false,
         tabSettings: [
-          { name: 'Dashboard', label: 'Dashboard', enabled: true },
-          { name: 'Taxes', label: 'Tax Advisor', enabled: true },
-          { name: 'portfolio', label: 'Portfolio Performance', enabled: true },
-          { name: 'Expenses', label: 'Expense Analyst', enabled: true },
-          { name: 'Retirement', label: 'Retirement Planner', enabled: true },
-          { name: 'Legacy', label: 'Legacy Specialist', enabled: true },
-          { name: 'Files', label: 'Document Keeper', enabled: true },
-          { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: true },
+          { name: 'Dashboard', label: 'Dashboard', enabled: false },
+          { name: 'Taxes', label: 'Tax Advisor', enabled: false },
+          { name: 'portfolio', label: 'Portfolio Performance', enabled: false },
+          { name: 'Expenses', label: 'Expense Analyst', enabled: false },
+          { name: 'Retirement', label: 'Retirement Planner', enabled: false },
+          { name: 'Legacy', label: 'Legacy Specialist', enabled: false },
+          { name: 'Files', label: 'Document Keeper', enabled: false },
+          { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: false },
         ],
       };
     },
@@ -51,6 +51,12 @@
         .then((response) => {
           if (response.data.settings) {
             this.tabSettings = JSON.parse(response.data.settings);
+          } else {
+            this.tabSettings.forEach((tab) => {
+              if (tab.name === 'StockRecommendations' || tab.name === 'portfolio') {
+                tab.enabled = true;
+              }
+            });
           }
         })
         .catch((error) => {
