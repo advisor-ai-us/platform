@@ -2,6 +2,6 @@ python-dotenv
 openai
 flask
 flask-cors
-fitz
+PyMuPDF
 frontend
 tools

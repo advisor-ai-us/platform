@@ -3,8 +3,7 @@
       <el-header>
         <div class="header">
           <div class="logo">
-            <i class="fas fa-robot logo-icon"></i>
-            <span class="logo-text">Advisor<span class="logo-highlight">AI</span></span>
+            <img src="/logo.png" alt="AdvisorAI Logo" class="logo-image">
           </div>
           <div class="auth-links">
             <el-link href="/login">Login</el-link>
@@ -118,26 +117,13 @@ h3 {
 }
 
 .logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -1px;
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
-.logo-text {
-  color: #ffffff;
-}
-
-.logo-highlight {
-  color: #FFD700;
-  font-style: italic;
-}
-
-.logo-icon {
-  font-size: 1.8rem;
-  color: #FFD700;
+.logo-image {
+  height: 40px;
+  width: auto;
 }
 
 @media (max-width: 768px) {
@@ -163,8 +149,30 @@ h3 {
     width: 100%;
   }
 
-  .logo {
-    font-size: 1.2rem;
+  .logo-image {
+    height: 30px;
   }
+}
+
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1, h2 {
+  color: #409EFF;
+}
+
+.feature-card {
+  height: 100%;
+}
+
+.get-started-btn {
+  margin-top: 20px;
+}
+
+ul {
+  padding-left: 20px;
 }
   </style>
