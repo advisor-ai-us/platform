@@ -59,7 +59,7 @@
           
           <p>Join us at advisorai.us, where AI and US come together to make smarter investment decisions. It's all about collaboration, innovation, and making your financial journey successful and enjoyable.</p>
           
-          <el-button type="primary" class="get-started-btn">Get Started Now</el-button>
+          <el-button type="primary" @click="goToWaitlist" class="get-started-btn">Get Started Now</el-button>
         </div>
       </el-main>
       <el-footer>
@@ -75,8 +75,13 @@
   
   <script>
   export default {
-    name: 'HomePage'
+    name: 'HomePage',
+    methods: {
+      goToWaitlist() {
+        this.$router.push('/waitlist');
+    }
   }
+}
   </script>
   
   <style scoped>
