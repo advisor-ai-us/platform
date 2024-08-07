@@ -67,7 +67,7 @@
     </el-main>
     <el-footer>
       <div class="footer">
-        <el-row>
+        <el-row style="max-width: 1200px; margin: 0 auto;">
           <el-col :span="isMobile ? 24 : 16">
             <p>© 2024 Advisor AI. All rights reserved.</p>
           </el-col>
