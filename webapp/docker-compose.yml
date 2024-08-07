@@ -15,9 +15,9 @@ services:
     environment:
       - FROM_SHELL_RUN_ENVIRONMENT_IS_DEV=${FROM_SHELL_RUN_ENVIRONMENT_IS_DEV}
     volumes:
-      - /gt/gt-prog-repos/webapp/webapp:/gt/gt-prog-repos/webapp/webapp
-      - /gt/gt-prog-repos/webapp/webapp/etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
-      - /gt/gt-prog-repos/webapp/webapp/dashboard:/var/www/html
+      - /gt/gt-prog-repos/platform/webapp:/gt/gt-prog-repos/platform/webapp
+      - /gt/gt-prog-repos/platform/webapp/etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
+      - /gt/gt-prog-repos/platform/webapp/dashboard:/var/www/html
 
 networks:
   finance:
