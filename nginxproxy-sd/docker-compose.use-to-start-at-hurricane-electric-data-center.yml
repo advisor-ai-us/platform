@@ -8,15 +8,15 @@ services:
     networks:
          - finance
     volumes:
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd:/gt/gt-prog-repos/webapp/nginxproxy-sd
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/var-www-html:/var/www/html
-      - /gt/gt-prog-repos/webapp:/gt/gt-prog-repos/webapp
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/etc-supervisor-conf.d-cron-nginx-services.conf:/etc/supervisor/conf.d/cron-nginx-services.conf
-      #- /gt/gt-prog-repos/webapp/nginxproxy-sd/trusted-ip-addresses-allowed-to-access-secure-locations/etc-supervisor-conf.d-update-allowed-ips.conf:/etc/supervisor/conf.d/update-allowed-ips.conf
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/etc-nginx-nginx.conf:/etc/nginx/nginx.conf
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/nginx-allow-cors-config.toinclude:/etc/nginx/conf.d/allow-cors-config.toinclude
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/certbot/crontab:/etc/crontab                               #This crontab file auto renew the Letsencrypt ssl certificates
-      - /gt/gt-prog-repos/webapp/nginxproxy-sd/certbot/etc-letsencrypt:/etc/letsencrypt                            #This is to check Letsencrypt ssl certificates file.
+      - /gt/gt-prog-repos/platform/nginxproxy-sd:/gt/gt-prog-repos/platform/nginxproxy-sd
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/var-www-html:/var/www/html
+      - /gt/gt-prog-repos/platform:/gt/gt-prog-repos/platform
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/etc-supervisor-conf.d-cron-nginx-services.conf:/etc/supervisor/conf.d/cron-nginx-services.conf
+      #- /gt/gt-prog-repos/platform/nginxproxy-sd/trusted-ip-addresses-allowed-to-access-secure-locations/etc-supervisor-conf.d-update-allowed-ips.conf:/etc/supervisor/conf.d/update-allowed-ips.conf
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/etc-nginx-nginx.conf:/etc/nginx/nginx.conf
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/nginx-allow-cors-config.toinclude:/etc/nginx/conf.d/allow-cors-config.toinclude
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/certbot/crontab:/etc/crontab                               #This crontab file auto renew the Letsencrypt ssl certificates
+      - /gt/gt-prog-repos/platform/nginxproxy-sd/certbot/etc-letsencrypt:/etc/letsencrypt                            #This is to check Letsencrypt ssl certificates file.
     restart: unless-stopped
     ports:
          - "184.105.149.6:80:80"

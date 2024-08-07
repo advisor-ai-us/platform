@@ -62,8 +62,8 @@ server {
     ######################################################
 
     # Requirement B1: Enable https certificates
-    ssl_certificate /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/fullchain.pem;
-    ssl_certificate_key /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/privkey.pem;
+    ssl_certificate /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/fullchain.pem;
+    ssl_certificate_key /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/privkey.pem;
 
     # Requirement B2: Configure which SSL protocols will we support?
     # TLSv1 TLSv1.1 TLSv1.2 This gives a score of 95.
@@ -89,7 +89,7 @@ server {
 
     # Requirement B4: Tell nginx to use our own DH key exchange parameters.
     # What is DH key exchange? It is a protocol which allows two parties to negotiate a secret without ever putting that secret on the wire. Ref: https://medium.com/@mvuksano/how-to-properly-configure-your-nginx-for-tls-564651438fe0
-    ssl_dhparam /gt/gt-prog-repos/webapp/nginxproxy-sd/dhparams-key/dhparam-4096.pem;
+    ssl_dhparam /gt/gt-prog-repos/platform/nginxproxy-sd/dhparams-key/dhparam-4096.pem;
 
     # Requriement B5: Enable HSTS: Ref: https://medium.com/@mvuksano/how-to-properly-configure-your-nginx-for-tls-564651438fe0
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
@@ -119,8 +119,8 @@ server {
     # Category D: Include all the locations that this nginx will proxy for
     ######################################################
 
-      include /gt/gt-prog-repos/webapp/nginxproxy-sd/nginx-contexts/main/http/servers/listen-443-for-sub-domain/advisorai-locations/access-through-all-ip-locations/*.conf;
-      include /gt/gt-prog-repos/webapp/nginxproxy-sd/nginx-contexts/main/http/servers/listen-443-for-sub-domain/advisorai-locations/access-only-through-trusted-ip-locations/*.conf;
+      include /gt/gt-prog-repos/platform/nginxproxy-sd/nginx-contexts/main/http/servers/listen-443-for-sub-domain/advisorai-locations/access-through-all-ip-locations/*.conf;
+      include /gt/gt-prog-repos/platform/nginxproxy-sd/nginx-contexts/main/http/servers/listen-443-for-sub-domain/advisorai-locations/access-only-through-trusted-ip-locations/*.conf;
 }
 
 
@@ -186,8 +186,8 @@ server {
     ######################################################
 
     # Requirement B1: Enable https certificates
-    ssl_certificate /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/fullchain.pem;
-    ssl_certificate_key /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/privkey.pem;
+    ssl_certificate /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/fullchain.pem;
+    ssl_certificate_key /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/privkey.pem;
 
     # Requirement B2: Configure which SSL protocols will we support?
     # TLSv1 TLSv1.1 TLSv1.2 This gives a score of 95.
@@ -213,7 +213,7 @@ server {
 
     # Requirement B4: Tell nginx to use our own DH key exchange parameters.
     # What is DH key exchange? It is a protocol which allows two parties to negotiate a secret without ever putting that secret on the wire. Ref: https://medium.com/@mvuksano/how-to-properly-configure-your-nginx-for-tls-564651438fe0
-    ssl_dhparam /gt/gt-prog-repos/webapp/nginxproxy-sd/dhparams-key/dhparam-4096.pem;
+    ssl_dhparam /gt/gt-prog-repos/platform/nginxproxy-sd/dhparams-key/dhparam-4096.pem;
 
     # Requriement B5: Enable HSTS: Ref: https://medium.com/@mvuksano/how-to-properly-configure-your-nginx-for-tls-564651438fe0
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
