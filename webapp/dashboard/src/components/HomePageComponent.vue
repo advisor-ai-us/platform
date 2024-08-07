@@ -29,7 +29,7 @@
             <el-col :span="12">
               <el-card class="feature-card">
                 <h3>AI Analysis</h3>
-                <p>Our advanced AI engine analyzes the uploaded documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It's like having a team of financial experts working for you around the clock.</p>
+                <p>The LLM analyzes the uploaded documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It's like having a team of financial experts working for you around the clock.</p>
               </el-card>
             </el-col>
           </el-row>
@@ -53,7 +53,7 @@
           
           <ul>
             <li><strong>Community-Driven Insights:</strong> Leverage the collective intelligence of a passionate investment community. Your inputs help create richer, more accurate analyses.</li>
-            <li><strong>Advanced AI Technology:</strong> Our AI continuously learns and adapts, providing cutting-edge financial insights and recommendations.</li>
+            <li><strong>Advanced AI Technology:</strong> The LLM continuously learns and adapts, providing cutting-edge financial insights and recommendations.</li>
             <li><strong>Fun and Engaging:</strong> We make investing not just profitable but also enjoyable. Engage with the community, share your findings, and see how your contributions help others.</li>
           </ul>
           
