@@ -1,302 +1,152 @@
 <template>
-  <el-container class="home-page">
-    <el-header>
-      <div class="header">
-        <div class="logo">
-          <img src="/ai+us-logo.png" alt="AdvisorAI Logo" class="logo-image">
-        </div>
-        <div class="menu" v-if="isLoggedIn">
-          <router-link to="/advisor-personality" class="menu-item">Advisor AI</router-link>
-        </div>
-        <div class="menu" v-else>
-          <router-link to="/login" class="menu-item">Login</router-link>
-          <router-link to="/waitlist" class="menu-item">Join waitlist</router-link>
-        </div>
-      </div>
-    </el-header>
-    <el-main>
-      <div class="main-content">
-        <h1 style="margin-top: 0;">Welcome to advisorai.us – It's all about AI + US!</h1>
-
-        <p>At advisorai.us, we're revolutionizing investment analysis by integrating AI with the collaborative principles of Git. Our platform allows users to harness the power of AI to analyze financial reports while also leveraging community contributions to continually refine and improve investment insights.</p>
-
+  <div>
+    <header>
+      <img src="/logo.png" alt="Advisor AI Logo">
+      <h1>Get Started Now</h1>
+      <p>An AI Powered Investment Analysis</p>
+    </header>
+    <div class="container">
+      <div class="section">
         <h2>How it works:</h2>
-
-        <el-row :gutter="20">
-          <el-col :span="isMobile ? 24 : 12">
-            <el-card class="feature-card">
-              <h3>Upload Reports</h3>
-              <p>Users upload PDFs of financial reports, SEC filings, and other relevant documents about a company. Whether it's Google, Microsoft, or any other stock, our platform processes all types of financial data.</p>
-            </el-card>
-          </el-col>
-          <el-col :span="isMobile ? 24 : 12" :style="isMobile ? 'margin-top: 20px;' : ''">
-            <el-card class="feature-card">
-              <h3>AI Analysis</h3>
-              <p>The LLM analyzes the uploaded documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It's like having a team of financial experts working for you around the clock.</p>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20" style="margin-top: 20px;">
-          <el-col :span="isMobile ? 24 : 12">
-            <el-card class="feature-card">
-              <h3>Collaborate and Fork</h3>
-              <p>Similar to Git, you can fork existing reports. See an analysis you like? Fork it! Add more documents, bring in additional data, and create a personalized version of the report. This fosters a dynamic and collaborative environment where insights are continually refined.</p>
-            </el-card>
-          </el-col>
-          <el-col :span="isMobile ? 24 : 12" :style="isMobile ? 'margin-top: 20px;' : ''">
-            <el-card class="feature-card">
-              <h3>Share and Improve</h3>
-              <p>Share your reports with the community, allowing others to benefit from your insights and build upon them. The more data and perspectives we gather, the smarter and more accurate our AI becomes.</p>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <h2>Why advisorai.us?</h2>
-
-        <ul>
-          <li><strong>Community-Driven Insights:</strong> Leverage the collective intelligence of a passionate investment community. Your inputs help create richer, more accurate analyses.</li>
-          <li><strong>Advanced AI Technology:</strong> The LLM continuously learns and adapts, providing cutting-edge financial insights and recommendations.</li>
-          <li><strong>Fun and Engaging:</strong> We make investing not just profitable but also enjoyable. Engage with the community, share your findings, and see how your contributions help others.</li>
-        </ul>
-
-        <p>Join us at advisorai.us, where AI and US come together to make smarter investment decisions. It's all about collaboration, innovation, and making your financial journey successful and enjoyable.</p>
-
-        <el-button type="primary" @click="goToWaitlist" class="get-started-btn">Get Started Now</el-button>
+        <div class="features">
+          <div class="feature">
+            <h3>Find verifiable reports</h3>
+            <p>Our System finds PDF’s of financial reports, SEC filings, and other relevant documents about a company. Whether it's Google, Microsoft, or any other stock, our platform processes all types of financial data.</p>
+          </div>
+          <div class="feature">
+            <h3>AI Analysis</h3>
+            <p>The LLM analyzes the verfified documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It’s like having a team of financial experts working for you around the clock.</p>
+          </div>
+          <div class="feature">
+            <h3>Collaborate and Fork</h3>
+            <p>Similar to Git, you can fork existing reports. See an analysis you like? Fork it! Add more documents, bring in additional data, and create a personalized version of the report. This fosters a dynamic and collaborative environment where insights are continually refined.</p>
+          </div>
+          <div class="feature">
+            <h3>Share and Improve</h3>
+            <p>Share your reports with the community, allowing others to benefit from your insights and build upon them. The more data and perspectives we gather, the smarter and more accurate our AI becomes.</p>
+          </div>
+        </div>
+        <h2>Current AI recommendations:</h2>
+        <div>Google [buy]</div>
+        <div>Nvidia [Sell]</div>
+        <div>BTC/USD [Hold]</div>
       </div>
-    </el-main>
-    <el-footer>
-      <div class="footer">
-        <el-row style="max-width: 1200px; margin: 0 auto;">
-          <el-col :span="isMobile ? 24 : 16">
-            <p>© 2024 Advisor AI. All rights reserved.</p>
-          </el-col>
-          <el-col :span="isMobile ? 24 : 8" :style="isMobile ? 'margin-top: 15px;' : ''">
-            <p>
-              <el-icon style="font-size: 1.2rem;vertical-align: text-bottom;margin: 0 3px 1px 0;"><HomeFilled /></el-icon>
-              <strong>Contact Us:</strong>
-            </p>
-            <p>101 California Avenue </p>
-            <p>D100A</p>
-            <p>Palo Alto, CA 94306</p>
-          </el-col>
-        </el-row>
-      </div>
-    </el-footer>
-  </el-container>
+    </div>
+    <div class="footer">
+      &copy; 2024 Advisor AI. All rights reserved. | Contact Us: 101 California Avenue, D100A, Palo Alto, CA 94306
+    </div>
+  </div>
 </template>
 
 <script>
-import { HomeFilled } from '@element-plus/icons-vue';
 export default {
-  name: 'HomePage',
-  data() {
-    return {
-      isMobile: false,
-      isLoggedIn: false,
-    };
-  },
-  components: {
-    HomeFilled,
-  },
-  mounted() {
-    const token = localStorage.getItem('token');
-    const email = localStorage.getItem('email');
-    if (token && email) {
-      this.isLoggedIn = true;
-    }
-
-    // Add a listener for window resize events
-    window.addEventListener('resize', this.handleWindowResize);
-    this.handleWindowResize();
-  },
-  beforeDestroy() {
-    // Remove the listener when the component is destroyed
-    window.removeEventListener('resize', this.handleWindowResize);
-  },
-  methods: {
-    handleWindowResize() {
-      this.isMobile = window.innerWidth <= 700;
-    },
-    goToWaitlist() {
-      this.$router.push('/waitlist');
-    }
-  }
+  name: 'HomePage'
 }
 </script>
 
-<style>
-header.el-header {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    z-index: 999;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 30px 0 40px;
-  background-color: #409EFF;
-  color: white;
-}
-main.el-main {
-    margin-top: 45px;
-}
-.menu {
-  display: flex;
-  position: relative;
-}
-
-.menu-item {
-  display: inline-block;
-  padding: 8px 18px;
-  margin: 0 5px;
-  text-decoration: none;
-  color: white;
-  background: linear-gradient(to right, #FAF45F, #F60100);
-  position: relative;
-  clip-path: polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%, 10% 50%);
-  transition: background-color 0.3s;
-}
-.menu-item:hover {
-  background: linear-gradient(to right, #ffcc00, #ff3300);
-}
-.auth-links {
-  display: flex;
-  gap: 15px;
-}
-.main-content {
-  text-align: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-.feature-card {
-  height: 100%;
-  text-align: left;
-}
-.feature-card ul {
-  padding-left: 20px;
-}
-.get-started-btn {
-  margin-top: 20px;
-  font-size: 1.2em;
-  padding: 12px 24px;
-}
-header.el-header, footer.el-footer {
+<style scoped>
+body {
+  font-family: 'Open Sans', sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  margin: 0;
   padding: 0;
 }
-.main-content > h1 {
-  font-size: 2.2em;
-  line-height: 30px;
-  background: linear-gradient(to right, #FAF45F, #F60100);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  transition: background-color 0.3s;
+header {
+  background: #fff;
+  padding: 40px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: center;
+  border-radius: 8px;
 }
-
-.auth-links a {
-  color: #fff;
-  text-decoration: none;
-  margin-left: 15px;
-}
-
-h2 {
+header img {
+  max-width: 100px;
   margin-bottom: 20px;
-  color: #409EFF;
-  font-weight: bold;
 }
-
-h3 {
-  color: #409EFF;
-  margin: 0;
+header h1 {
+  font-size: 2.5em;
+  margin: 0.2em 0;
+  color: #007BFF;
 }
-
-.el-row {
-  margin-top: 30px;
+header p {
+  font-size: 1.2em;
+  color: #777;
 }
-
-.logo {
-  display: flex;
-  align-items: center;
+.container {
+  max-width: 1200px;
+  margin: 2em auto;
+  padding: 2em;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
 }
-
-.logo-image {
-  height: 40px;
-  width: auto;
-  padding: 5px 0;
+.section {
+  margin-bottom: 2em;
 }
-
-p {
-  line-height: 22px;
-  margin-bottom: 0;
-}
-
-@media (max-width: 768px) {
-  .header {
-    align-items: flex-start;
-    padding: 10px 5px 10px 10px;
-  }
-
-  .auth-links {
-    margin-top: 10px;
-  }
-
-  h1, h2 {
-    font-size: 1.5em !important;
-  }
-
-  .get-started-btn {
-    width: 100%;
-  }
-
-  .logo-image {
-    height: 24px;
-  }
-
-  .footer {
-    padding: 10px !important;
-  }
-  #app .main-content {
-    padding: 0;
-  }
-}
-
-h1, h2 {
-  color: #409EFF;
-  line-height: 26px;
+.section h2 {
   font-size: 2em;
+  margin-bottom: 1em;
+  color: #444;
+  text-align: center;
 }
-
-.feature-card {
-  height: 100%;
-}
-
-.get-started-btn {
-  margin-top: 20px;
-}
-
-ul {
-  padding-left: 0;
-  list-style: none;
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
   text-align: left;
-  line-height: 24px;
 }
-
-.footer {
-  background: #409EFF;
+.feature {
+  flex: 1 1 45%;
+  margin: 1em;
+  padding: 1em;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.feature h3 {
+  font-size: 1.5em;
+  margin-bottom: 0.5em;
+  color: #007BFF;
+}
+.feature p {
+  font-size: 1em;
+  color: #666;
+}
+.section ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+.section ul li {
+  margin: 0.5em 0;
+  padding-left: 20px;
+  position: relative;
+}
+.section ul li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #007BFF;
+}
+.button {
+  display: inline-block;
+  padding: 0.75em 1.5em;
   color: #fff;
-  padding: 10px 40px;
+  background: #007BFF;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1em;
+  text-align: center;
+  margin-top: 1em;
+  transition: background 0.3s ease;
 }
-
-.footer > .el-row {
-  margin: 0;
+.button:hover {
+  background: #0056b3;
 }
-
-.footer > .el-row p {
-  margin: 0;
-  font-size: 0.9rem;
+.footer {
+  text-align: center;
+  padding: 2em 0;
+  color: #777;
+  font-size: 0.9em;
 }
 </style>
