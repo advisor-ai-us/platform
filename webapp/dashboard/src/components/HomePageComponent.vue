@@ -15,7 +15,7 @@
           </div>
           <div class="feature">
             <h3>AI Analysis</h3>
-            <p>The LLM analyzes the verfified documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It’s like having a team of financial experts working for you around the clock.</p>
+            <p>The LLM analyzes the verified documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It’s like having a team of financial experts working for you around the clock.</p>
           </div>
           <div class="feature">
             <h3>Collaborate and Fork</h3>
@@ -27,9 +27,20 @@
           </div>
         </div>
         <h2>Current AI recommendations:</h2>
-        <div>Google [buy]</div>
-        <div>Nvidia [Sell]</div>
-        <div>BTC/USD [Hold]</div>
+        <div class="feature">
+
+        <div class="recommendations">
+          <div class="recommendation buy">
+            <span class="icon">⬆️</span> Google <span class="action"></span>
+          </div>
+          <div class="recommendation sell">
+            <span class="icon">⬇️</span> Nvidia <span class="action"></span>
+          </div>
+          <div class="recommendation hold">
+            <span class="icon">➡️</span> BTC/USD <span class="action"></span>
+          </div>
+        </div>
+        </div>
       </div>
     </div>
     <div class="footer">
@@ -37,12 +48,6 @@
     </div>
   </div>
 </template>
-
-<script>
-export default {
-  name: 'HomePage'
-}
-</script>
 
 <style scoped>
 body {
@@ -142,6 +147,42 @@ header p {
 }
 .button:hover {
   background: #0056b3;
+}
+.recommendations {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1em;
+}
+.recommendation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 80%;
+  padding: 1em;
+  margin: 0.5em 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-size: 1.2em;
+}
+.recommendation .icon {
+  font-size: 1.5em;
+  margin-right: 0.5em;
+}
+.recommendation.buy {
+  background: #d4edda;
+  color: #155724;
+}
+.recommendation.sell {
+  background: #f8d7da;
+  color: #721c24;
+}
+.recommendation.hold {
+  background: #fff3cd;
+  color: #856404;
+}
+.recommendation .action {
+  font-weight: bold;
 }
 .footer {
   text-align: center;
