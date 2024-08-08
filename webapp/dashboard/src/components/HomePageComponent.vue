@@ -1,5 +1,10 @@
 <template>
   <div>
+    <div class="auth-links">
+          <el-button type="primary" @click="$router.push('/login')">Login</el-button>
+          <el-button type="success" @click="$router.push('/waitlist')">Join Waitlist</el-button>
+        </div>
+
     <header>
       <img src="/logo.png" alt="Advisor AI Logo">
       <h1>Get Started Now</h1>
@@ -7,15 +12,16 @@
     </header>
     <div class="container">
       <div class="section">
+        <img src="/homepage-screenshot-top-part.png" alt="Homepage Screenshot" class="screenshot">
         <h2>How it works:</h2>
         <div class="features">
           <div class="feature">
             <h3>Find verifiable reports</h3>
-            <p>Our System finds PDF’s of financial reports, SEC filings, and other relevant documents about a company. Whether it's Google, Microsoft, or any other stock, our platform processes all types of financial data.</p>
+            <p>Our System finds PDF's of financial reports, SEC filings, and other relevant documents about a company. Whether it's Google, Microsoft, or any other stock, our platform processes all types of financial data.</p>
           </div>
           <div class="feature">
             <h3>AI Analysis</h3>
-            <p>The LLM analyzes the verified documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It’s like having a team of financial experts working for you around the clock.</p>
+            <p>The LLM analyzes the verified documents, extracting key insights, identifying trends, and providing comprehensive stock recommendations. It's like having a team of financial experts working for you around the clock.</p>
           </div>
           <div class="feature">
             <h3>Collaborate and Fork</h3>
@@ -189,5 +195,20 @@ header p {
   padding: 2em 0;
   color: #777;
   font-size: 0.9em;
+}
+.screenshot {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 2em;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.auth-links {
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+.auth-links .el-button {
+  margin-left: 10px;
 }
 </style>
