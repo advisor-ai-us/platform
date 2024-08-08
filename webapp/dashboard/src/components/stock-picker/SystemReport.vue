@@ -16,11 +16,23 @@
               <el-row>
                 <el-col :span="24">
                   <h4 style="margin-bottom: 10px;">Recommendation:</h4>
-                  <p style="margin-top: 0;">{{ recommendation || 'not found' }}</p>
+                  <p style="margin-top: 0;">{{ stockReport.recommendation || 'not found' }}</p>
                 </el-col>
                 <el-col :span="24">
                   <h4 style="margin-bottom: 10px;">Reason:</h4>
-                  <p style="margin-top: 0;">{{ justification || 'not found' }}</p>
+                  <p style="margin-top: 0;">{{ stockReport.justification || 'not found' }}</p>
+                </el-col>
+                <el-col :span="24">
+                  <h4 style="margin-bottom: 10px;">Net Present Value:</h4>
+                  <p style="margin-top: 0;">{{ stockReport.net_present_value || 'not found' }}</p>
+                </el-col>
+                <el-col :span="24">
+                  <h4 style="margin-bottom: 10px;">Discount Rate:</h4>
+                  <p style="margin-top: 0;">{{ stockReport.discount_rate || 'not found' }}</p>
+                </el-col>
+                <el-col :span="24">
+                  <h4 style="margin-bottom: 10px;">Comparison between NPV and Market value:</h4>
+                  <p style="margin-top: 0;">{{ stockReport.comparison || 'not found' }}</p>
                 </el-col>
               </el-row>
             </div>
@@ -71,6 +83,7 @@ export default {
       recommendation: '',
       justification: '',
       enhancedReport: [],
+      stockReport: {},
 
       // for chat component
       systemPrompt: '',
@@ -129,8 +142,7 @@ export default {
           'Content-Type': 'application/json',
         },
       }).then((response) => {
-        this.recommendation = response.data.recommendation;
-        this.justification = response.data.justification;
+        this.stockReport = response.data.reportData;
 
         this.enhancedReport = response.data.enhancedReportList;
       }).catch((error) => {

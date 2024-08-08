@@ -1,9 +1,9 @@
 <template>
   <div>
     <div class="auth-links">
-          <el-button type="primary" @click="$router.push('/login')">Login</el-button>
-          <el-button type="success" @click="$router.push('/waitlist')">Join Waitlist</el-button>
-        </div>
+      <el-button type="primary" @click="$router.push('/login')">Login</el-button>
+      <el-button type="success" @click="$router.push('/waitlist')">Join Waitlist</el-button>
+    </div>
 
     <header>
       <img src="/logo.png" alt="Advisor AI Logo">

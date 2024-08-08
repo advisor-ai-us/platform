@@ -17,6 +17,9 @@
       <el-form-item label="Biggest Problem to Solve" prop="biggestProblem">
         <el-input type="textarea" v-model="waitlistForm.biggestProblem" :rows="4" placeholder="What's the biggest problem you hope to solve with an AI Finance analyst?"></el-input>
       </el-form-item>
+      <el-form-item label="Invite Code">
+        <el-input v-model="waitlistForm.inviteCode" autocomplete="off"></el-input>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" native-type="submit">Join Waitlist</el-button>
       </el-form-item>
@@ -35,7 +38,8 @@ export default {
         email: '',
         password: '',
         aboutYourself: '',
-        biggestProblem: ''
+        biggestProblem: '',
+        inviteCode: ''
       },
       waitlistRules: {
         fullName: [
@@ -73,11 +77,12 @@ export default {
               this.waitlistForm.password = '';
               this.waitlistForm.aboutYourself = '';
               this.waitlistForm.biggestProblem = '';
+              this.waitlistForm.inviteCode = '';
             })
             .catch((error) => {
               console.error(error);
               this.$message({
-                message: 'Failed to join the waitlist. Please try again.',
+                message: error.response.data.error,
                 type: 'error'
               });
             });

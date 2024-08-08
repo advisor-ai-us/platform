@@ -11,7 +11,20 @@
         {{ capitalize(stock) }} AI analysis discussion
       </h2>
 
-      <el-card class="stock-picker-manage_pdf">
+      <el-card class="stock-piker-graphs">
+        <div slot="header" class="stock-picker-manage_pdf__header">
+          <h3>Graphs</h3>
+        </div>
+        <div class="stock-picker-manage_pdf__content">
+          <el-row>
+            <el-col :span="24">
+              <canvas id="projected-profit-chart" style="width: 100%; height: 400px;"></canvas>
+            </el-col>
+          </el-row>
+        </div>
+      </el-card>
+
+      <el-card class="stock-picker-manage_pdf" style="margin-top: 20px;">
         <div slot="header" class="stock-picker-manage_pdf__header">
           <h3>Manage PDF</h3>
         </div>
@@ -76,11 +89,23 @@
           <el-row>
             <el-col :span="24">
               <h4 style="margin-bottom: 10px;">Recommendation:</h4>
-              <p style="margin-top: 0;">{{ recommendation || 'not found' }}</p>
+              <p style="margin-top: 0;">{{ reportData.recommendation || 'not found' }}</p>
             </el-col>
             <el-col :span="24">
               <h4 style="margin-bottom: 10px;">Justification:</h4>
-              <p style="margin-top: 0;">{{ justification || 'not found' }}</p>
+              <p style="margin-top: 0;">{{ reportData.justification || 'not found' }}</p>
+            </el-col>
+            <el-col :span="24">
+              <h4 style="margin-bottom: 10px;">Net Present Value:</h4>
+              <p style="margin-top: 0;">{{ reportData.net_present_value || 'not found' }}</p>
+            </el-col>
+            <el-col :span="24">
+              <h4 style="margin-bottom: 10px;">Discount Rate:</h4>
+              <p style="margin-top: 0;">{{ reportData.discount_rate || 'not found' }}</p>
+            </el-col>
+            <el-col :span="24">
+              <h4 style="margin-bottom: 10px;">Comparison between NPV and Market value:</h4>
+              <p style="margin-top: 0;">{{ reportData.comparison || 'not found' }}</p>
             </el-col>
           </el-row>
         </div>
@@ -98,6 +123,9 @@ import ChatComponent from '../ChatComponent.vue';
 import AdvisorPersonalityTabsComponent from '../AdvisorPersonalityTabsComponent.vue';
 import { Back } from '@element-plus/icons-vue';
 
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
+
 export default {
   data() {
     return {
@@ -113,10 +141,12 @@ export default {
       recommendation: '',
       justification: '',
       reportOfUid: null,
+      reportData: {},
 
       // for chat component
       systemPrompt: '',
       pageName: 'stock-picker-discussion',
+      projectedProfitChart: null,
     };
   },
   created() {
@@ -155,8 +185,9 @@ export default {
     // read data from event listener
     const eventName = "update-stock-report";
     this.emitter.on(eventName, (data) => {
-      this.recommendation = data.recommendation;
-      this.justification = data.justification;
+      this.reportData = data.reportRow;
+
+      this.makeProjectedProfitChart();
     });
 
     // read update-tab-settings event
@@ -187,8 +218,9 @@ export default {
           'Content-Type': 'application/json',
         },
       }).then((response) => {
-        this.recommendation = response.data.recommendation;
-        this.justification = response.data.justification;
+        this.reportData = response.data.reportData;
+
+        this.makeProjectedProfitChart();
       }).catch((error) => {
         console.error('Error:', error);
       });
@@ -342,6 +374,38 @@ export default {
         // Do nothing
       });
     },
+    makeProjectedProfitChart() {
+      const ctx = document.getElementById('projected-profit-chart').getContext('2d');
+
+      // Destroy existing chart instance if it exists
+      if (this.projectedProfitChart) {
+        this.projectedProfitChart.destroy();
+      }
+
+      this.projectedProfitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: this.reportData.graph_data_x_axis,
+          datasets: [{
+            label: 'The projected annual profit for the next 20 years.',
+            data: this.reportData.graph_data_y_axis,
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    
+
+
+    }
   },
 };
 </script>

@@ -219,11 +219,16 @@ def get_user_db(email):
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 stock_name TEXT NOT NULL,
-                 recommendation TEXT DEFAULT NULL,
-                 justification TEXT DEFAULT NULL,
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stock_name TEXT NOT NULL,
+                recommendation TEXT DEFAULT NULL,
+                justification TEXT DEFAULT NULL,
+                discount_rate TEXT DEFAULT NULL,
+                net_present_value TEXT DEFAULT NULL,
+                comparison TEXT DEFAULT NULL,
+                graph_data_x_axis TEXT DEFAULT NULL,
+                graph_data_y_axis TEXT DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 
@@ -619,12 +624,34 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
                 save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
 
                 # save recommendation
-                recommendation = responseData.get('recommendation')
-                save_stock_recommendations(userEmail, recommendation, stock)
+                # recommendation = responseData.get('recommendation')
+                # save_stock_recommendations(userEmail, recommendation, stock)
 
-                # Handle justifications
+                # # Handle justifications
+                # justification = responseData.get('justification')
+                # save_stock_recommendation_jusitifications(userEmail, justification, stock)
+
+                # save report data
+                recommendation = responseData.get('recommendation')
+                recommendation = recommendation if recommendation else None
+
                 justification = responseData.get('justification')
-                save_stock_recommendation_jusitifications(userEmail, justification, stock)
+                justification = justification if justification else None
+
+                discount_rate = responseData.get('discount_rate')
+                discount_rate = discount_rate if discount_rate else None
+
+                net_present_value = responseData.get('net_present_value')
+                net_present_value = net_present_value if net_present_value else None
+
+                comparison = responseData.get('comparison')
+                comparison = comparison if comparison else None
+
+                graph_data_x_axis = responseData.get('graph_data').get('line_chart').get('x_axis') if responseData.get('graph_data') else None
+                graph_data_y_axis = responseData.get('graph_data').get('line_chart').get('y_axis') if responseData.get('graph_data') else None
+
+                # save stock report data
+                save_stock_report_data(userEmail, stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis)
         else:
             MsgForUser = "An error occurred. Please try again."
 
@@ -632,12 +659,20 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
         db_name = get_user_db(userEmail)
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
-        c.execute("SELECT recommendation, justification FROM stock_reports WHERE stock_name = ?", (stock,))
-        row = c.fetchone()
+        c.execute("SELECT recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis FROM stock_reports WHERE stock_name = ?", (stock,))
+        reportRow = c.fetchone()
         conn.close()
 
-        recommendationData = row[0] if row else None
-        justificationData = row[1] if row else None
+        recommendationData = reportRow[0] if reportRow else None
+        reportData = {
+            "recommendation": recommendationData,
+            "justification": reportRow[1] if reportRow else None,
+            "discount_rate": reportRow[2] if reportRow[2] else None,
+            "net_present_value": reportRow[3] if reportRow[3] else None,
+            "comparison": reportRow[4] if reportRow[4] else None,
+            "graph_data_x_axis": json.loads(reportRow[5]) if reportRow[5] else None,
+            "graph_data_y_axis": json.loads(reportRow[6]) if reportRow[6] else None
+        }
 
         # create a table if not already created to store the stock reports data. This table will store the user_id, stock_name, created_at
         db_name = os.path.join(database_path, "default.db")
@@ -663,15 +698,14 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
             exists = c.fetchone()
 
             if exists:
-                # nothing to do if the stock name already exists for the user_id
-                pass
+                c.execute("UPDATE stock_reports SET recommendation = ? WHERE user_id = ? AND stock_name = ?", (recommendationData, user_id, stock))
             else:
                 c.execute("INSERT INTO stock_reports (user_id, user_name, stock_name, recommendation) VALUES (?, ?, ?, ?)", (user_id, user_name, stock, recommendationData))
 
         conn.commit()
         conn.close()
 
-        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model, "recommendation": recommendationData, "justification": justificationData})
+        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model, "reportRow": reportData})
     else:
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
@@ -723,44 +757,27 @@ def ai_request_stock_picker_system_report(userEmail, message, display_on_page, s
 
         return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model})
 
-def save_stock_recommendations(email, recommendations, stock):
-    if not recommendations:
-        return
-
+def save_stock_report_data(email, stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
     current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
-    
+
+    # if graph_data_x_axis and graph_data_y_axis are lists, convert them to strings
+    if isinstance(graph_data_x_axis, list):
+        graph_data_x_axis = json.dumps(graph_data_x_axis)
+
+    if isinstance(graph_data_y_axis, list):
+        graph_data_y_axis = json.dumps(graph_data_y_axis)
+
     c.execute("SELECT 1 FROM stock_reports WHERE stock_name = ?", (stock,))
     exists = c.fetchone()
 
     if exists:
-        c.execute("UPDATE stock_reports SET recommendation = ? WHERE stock_name = ?", (recommendations, stock))
+        c.execute("UPDATE stock_reports SET recommendation = ?, justification = ?, discount_rate = ?, net_present_value = ?, comparison = ?, graph_data_x_axis = ?, graph_data_y_axis = ? WHERE stock_name = ?", (recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis, stock))
     else:
-        c.execute("INSERT INTO stock_reports (stock_name, recommendation, created_at) VALUES (?, ?, ?)", (stock, recommendations, current_time_ms))
-
-    conn.commit()
-    conn.close()
-
-def save_stock_recommendation_jusitifications(email, justification, stock):
-    if not justification:
-        return
-
-    db_name = get_user_db(email)
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-
-    current_time_ms = int(datetime.datetime.now().timestamp() * 1000)
-    
-    c.execute("SELECT 1 FROM stock_reports WHERE stock_name = ?", (stock,))
-    exists = c.fetchone()
-
-    if exists:
-        c.execute("UPDATE stock_reports SET justification = ? WHERE stock_name = ?", (justification, stock))
-    else:
-        c.execute("INSERT INTO stock_reports (stock_name, justification, created_at) VALUES (?, ?, ?)", (stock, justification, current_time_ms))
+        c.execute("INSERT INTO stock_reports (stock_name, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis, current_time_ms))
 
     conn.commit()
     conn.close()
@@ -802,12 +819,20 @@ def get_stock_report():
     db_name = get_user_db(reportOfEmail)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
-    c.execute("SELECT recommendation, justification FROM stock_reports WHERE stock_name = ?", (stock,))
-    row = c.fetchone()
+    #c.execute("SELECT recommendation, justification FROM stock_reports WHERE stock_name = ?", (stock,))
+    c.execute("SELECT recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis FROM stock_reports WHERE stock_name = ?", (stock,))
+    reportRow = c.fetchone()
     conn.close()
 
-    recommendation = row[0] if row else None
-    justification = row[1] if row else None
+    reportData = {
+        "recommendation": reportRow[0] if reportRow else None,
+        "justification": reportRow[1] if reportRow else None,
+        "discount_rate": reportRow[2] if reportRow[2] else None,
+        "net_present_value": reportRow[3] if reportRow[3] else None,
+        "comparison": reportRow[4] if reportRow[4] else None,
+        "graph_data_x_axis": json.loads(reportRow[5]) if reportRow[5] else None,
+        "graph_data_y_axis": json.loads(reportRow[6]) if reportRow[6] else None
+    }
 
     # Get the all user_id from the stock_reports table where the stock_name is the stock.
     db_name = os.path.join(database_path, "default.db")
@@ -817,7 +842,7 @@ def get_stock_report():
     rows = c.fetchall()
     conn.close()
 
-    return jsonify({"recommendation": recommendation, "justification": justification, "enhancedReportList": [{"id": row[0], "name": row[1], "recommendation": row[2]} for row in rows]})
+    return jsonify({"reportData": reportData, "enhancedReportList": [{"id": row[0], "name": row[1], "recommendation": row[2]} for row in rows]})
 
 @app.route('/acr/stock/recommendations', methods=['GET'])
 def get_stock_recommendations():
@@ -836,7 +861,8 @@ def get_stock_recommendations():
     db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
-    c.execute("SELECT stock_name, recommendation FROM stock_reports WHERE user_id = 1")
+    #c.execute("SELECT stock_name, recommendation FROM stock_reports WHERE user_id = 1")
+    c.execute("SELECT stock_name, recommendation FROM stock_reports GROUP BY stock_name")
     rows = c.fetchall()
     conn.close()
 
@@ -1124,17 +1150,27 @@ def join_waitlist():
     password = data.get('password')
     about_yourself = data.get('aboutYourself')
     biggest_problem = data.get('biggestProblem')
+    invite_code = data.get('inviteCode')
 
     if not full_name or not email or not about_yourself or not biggest_problem:
         return jsonify({"error": "All fields are required"}), 400
+
+    if invite_code and invite_code != 'jaikalima':
+        return jsonify({"error": "Invalid invite code"}), 400
 
     db_name = os.path.join(database_path, "default.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
+    # Check if the invite code is not empty and invite code='jaikalima' then set is_waitlist to False else True
+    if invite_code and invite_code == 'jaikalima':
+        is_waitlist = False
+    else:
+        is_waitlist = True
+
     try:
         hashed_password = generate_password_hash(password)
-        c.execute("INSERT INTO users (email, full_name, password, about_yourself, biggest_problem, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", (email, full_name, hashed_password, about_yourself, biggest_problem, True))
+        c.execute("INSERT INTO users (email, full_name, password, about_yourself, biggest_problem, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", (email, full_name, hashed_password, about_yourself, biggest_problem, is_waitlist))
         conn.commit()
     except sqlite3.IntegrityError:
         return jsonify({"error": "Email already exists"}), 400
@@ -1638,6 +1674,58 @@ def delete_pdf():
     conn.close()
 
     return jsonify({"message": "PDF deleted successfully"}), 200
+
+@app.route('/acr/stock/add', methods=['POST'])
+def add_stock():
+    data = request.get_json()
+    token = data.get('token')
+    email = data.get('userEmail')
+    stock = data.get('stockName')
+    
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(database_path, "default.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        stock_name TEXT NOT NULL,
+                        recommendation TEXT DEFAULT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+
+    c.execute("SELECT id, full_name FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = row[0]
+    user_name = row[1]
+
+    c.execute("SELECT 1 FROM stock_reports WHERE user_id = ? AND stock_name = ?", (user_id, stock))
+    row = c.fetchone()
+
+    if row:
+        return jsonify({"error": "Stock already exists"}), 400
+
+    c.execute("INSERT INTO stock_reports (user_id, user_name, stock_name) VALUES (?, ?, ?)", (user_id, user_name, stock))
+    conn.commit()
+    conn.close()
+
+    # insert the stock into the stock_reports table of the user's database
+    user_db_name = get_user_db(email)
+    conn = sqlite3.connect(user_db_name)
+    c = conn.cursor()
+
+    c.execute("INSERT INTO stock_reports (stock_name) VALUES (?)", (stock,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Stock added successfully"}), 201    
 
 @app.route('/acr/get_tab_settings', methods=['POST'])
 def get_tab_settings():

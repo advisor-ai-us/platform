@@ -226,11 +226,10 @@ export default {
           this.emitter.emit(eventName, { graphData, recommendations, assets });
         }
         else if(this.pageName === 'stock-picker-discussion') {
-          const recommendation = response.data.recommendation;
-          const justification = response.data.justification;
+          const reportRow = response.data.reportRow;
 
           const eventName = "update-stock-report";
-          this.emitter.emit(eventName, { recommendation, justification });
+          this.emitter.emit(eventName, { reportRow });
         }
 
         this.scrollToBottom();
