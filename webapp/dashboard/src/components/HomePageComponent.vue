@@ -3,7 +3,7 @@
     <header>
       <img src="/logo.png" alt="Advisor AI Logo">
       <h1>Get Started Now</h1>
-      <p>An AI Powered Investment Analysis</p>
+      <p>An AI Powered Collaborative Investment Analysis</p>
     </header>
     <div class="container">
       <div class="section">
