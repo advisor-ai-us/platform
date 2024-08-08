@@ -12,7 +12,14 @@
     </header>
     <div class="container">
       <div class="section">
-        <img src="/homepage-screenshot-top-part.png" alt="Homepage Screenshot" class="screenshot">
+        <el-carousel height="400px">
+          <el-carousel-item>
+            <img src="/homepage-screenshot-top-part.png" alt="Homepage Screenshot" class="screenshot">
+          </el-carousel-item>
+          <el-carousel-item>
+            <img src="/asset-ai-report.png" alt="Asset AI Report" class="screenshot">
+          </el-carousel-item>
+        </el-carousel>
         <h2>How it works:</h2>
         <div class="features">
           <div class="feature">
@@ -198,10 +205,8 @@ header p {
 }
 .screenshot {
   max-width: 100%;
-  height: auto;
-  margin-bottom: 2em;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-height: 100%;
+  object-fit: contain;
 }
 .auth-links {
   text-align: right;
@@ -210,5 +215,15 @@ header p {
 
 .auth-links .el-button {
   margin-left: 10px;
+}
+
+.el-carousel {
+  margin-bottom: 2em;
+}
+
+.el-carousel__item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>
