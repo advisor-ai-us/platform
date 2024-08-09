@@ -226,6 +226,9 @@ header p {
   justify-content: center;
   align-items: center;
 }
+.el-carousel__container {
+  text-align: center;
+}
 
 @media (max-width: 768px) {
   body header {
