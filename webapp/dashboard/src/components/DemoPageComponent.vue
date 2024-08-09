@@ -1,15 +1,16 @@
 <template>
     <el-row justify="center" align="middle" style="height: 100vh;">
         <el-col style="text-align: center;">
-            <video
-                ref="videoPlayer"
-                class="video-js vjs-default-skin"
-                controls
-                :data-setup="{}"
-                width="700"
-            >
-                <source :src="videoSrc" type="video/mp4" />
-            </video>
+            <div class="video-container">
+                <video
+                    ref="videoPlayer"
+                    class="video-js vjs-default-skin"
+                    controls
+                    width="700"
+                >
+                    <source :src="videoSrc" type="video/mp4" />
+                </video>
+            </div>
       </el-col>
     </el-row>
   </template>
@@ -21,7 +22,7 @@
   export default {
     data() {
       return {
-        videoSrc: '/videos/demo1-2024-08-08.wav',
+        videoSrc: '/videos/demo1-2024-08-08.mp4',
       };
     },
     mounted() {
@@ -45,3 +46,5 @@
   };
   </script>
   
+  <style>
+</style>
