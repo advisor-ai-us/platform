@@ -90,7 +90,7 @@ def get_response_from_openai(api_key, model, messages):
 
 # Create users database if it doesn't exist
 def init_users_db():
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     if not os.path.exists(database_path):
         os.makedirs(database_path)
     
@@ -429,7 +429,7 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
   text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
   # get openai apikey and model from user database if available else use the default values
-  db_name1 = os.path.join(database_path, "default.db")
+  db_name1 = os.path.join(database_path, "central-coordinator.db")
   conn1 = sqlite3.connect(db_name1)
   c1 = conn1.cursor()
   c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -488,7 +488,7 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
     
     # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(database_path, "default.db")
+    db_name1 = os.path.join(database_path, "central-coordinator.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -583,7 +583,7 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
     # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(database_path, "default.db")
+    db_name1 = os.path.join(database_path, "central-coordinator.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -675,7 +675,7 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
         }
 
         # create a table if not already created to store the stock reports data. This table will store the user_id, stock_name, created_at
-        db_name = os.path.join(database_path, "default.db")
+        db_name = os.path.join(database_path, "central-coordinator.db")
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
@@ -715,7 +715,7 @@ def ai_request_stock_picker_system_report(userEmail, message, display_on_page, s
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
     # get openai apikey and model
-    db_name1 = os.path.join(database_path, "default.db")
+    db_name1 = os.path.join(database_path, "central-coordinator.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
@@ -802,7 +802,7 @@ def get_stock_report():
         return jsonify({"error": "Invalid token"}), 401
 
     if reportOfUid:
-        db_name = os.path.join(database_path, "default.db")
+        db_name = os.path.join(database_path, "central-coordinator.db")
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
         c.execute("SELECT email FROM users WHERE id = ?", (reportOfUid,))
@@ -835,7 +835,7 @@ def get_stock_report():
     }
 
     # Get the all user_id from the stock_reports table where the stock_name is the stock.
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
     c.execute("SELECT user_id, user_name, recommendation FROM stock_reports WHERE stock_name = ?", (stock,))
@@ -858,7 +858,7 @@ def get_stock_recommendations():
     if not decode_token_and_get_email(token) == userEmail:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
     #c.execute("SELECT stock_name, recommendation FROM stock_reports WHERE user_id = 1")
@@ -1128,7 +1128,7 @@ def signup():
 
     hashed_password = generate_password_hash(password)
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1158,7 +1158,7 @@ def join_waitlist():
     if invite_code and invite_code != 'jaikalima':
         return jsonify({"error": "Invalid invite code"}), 400
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1192,7 +1192,7 @@ def login():
     if not userEmail or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1228,7 +1228,7 @@ def validate_token():
     userEmail = decode_token_and_get_email(token)
 
     if userEmail:
-        db_name = os.path.join(database_path, "default.db")
+        db_name = os.path.join(database_path, "central-coordinator.db")
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
 
@@ -1266,7 +1266,7 @@ def get_settings():
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1293,7 +1293,7 @@ def openai_settings():
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
@@ -1685,7 +1685,7 @@ def add_stock():
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = os.path.join(database_path, "default.db")
+    db_name = os.path.join(database_path, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
