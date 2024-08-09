@@ -1,6 +1,6 @@
 <template>
     <div>
-      <el-button @click="openAiModal" link>Manage OpenAI</el-button>
+      <el-button @click="openAiModal" link>Manage LLM API keys</el-button>
       
       <el-dialog
         title="Set your own OpenAI API key and Model"
