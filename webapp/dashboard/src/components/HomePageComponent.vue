@@ -62,7 +62,7 @@
   </div>
 </template>
 
-<style scoped>
+<style>
 body {
   font-family: 'Open Sans', sans-serif;
   background: #f5f5f5;
@@ -225,5 +225,29 @@ header p {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  body header {
+    padding: 20px;
+  }
+  body header h1 {
+    line-height: 26px;
+    font-size: 2em;
+  }
+  body header p {
+    font-size: 1em;
+    line-height: 22px;
+  }
+  body .container {
+    margin: 0;
+  }
+  body .el-carousel__container {
+    height: 250px !important;
+  }
+  body .section h2 {
+    font-size: 1.5em;
+    line-height: 26px;
+  }
 }
 </style>
