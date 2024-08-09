@@ -1,13 +1,19 @@
 <template>
-  <div class="chat-container" :class="{ minimized: isMinimized }">
-    <div class="chat-header" @click="toggleChat">
+  <div class="chat-container" :class="{ minimized: isMinimized, bigger: isChatWindowBigger }">
+    <div class="chat-header">
       <span>Chat</span>
-      <el-button v-if="isMinimized" class="toggle-button" link>
-        <i class="fa fa-window-maximize"></i>
-      </el-button>
-      <el-button v-else class="toggle-button" link>
-        <i class="fa fa-window-minimize"></i>
-      </el-button>
+
+      <div class="chat-header-buttons">
+        <el-button class="close-button" link @click="toggleChatSizeBigger" v-if="!isChatWindowBigger">
+          <i class="fa fa-window-restore"></i>
+        </el-button>
+        <el-button v-if="isMinimized" class="toggle-button" link @click="toggleChat">
+          <i class="fa fa-window-maximize"></i>
+        </el-button>
+        <el-button v-else class="toggle-button" link @click="toggleChat">
+          <i class="fa fa-window-minimize"></i>
+        </el-button>
+      </div>
     </div>
     <div class="chat-content" v-if="!isMinimized">
       <el-scrollbar class="chat-messages">
@@ -53,6 +59,7 @@ export default {
     return {
       isChatVisible: true,
       isMinimized: true,
+      isChatWindowBigger: false,
       message: '',
       conversationHistory: [],
       isRequsetInProgress: false,
@@ -120,11 +127,19 @@ export default {
     toggleChat() {
       this.isMinimized = !this.isMinimized;
 
+      if (this.isMinimized) {
+        this.isChatWindowBigger = false;
+      }
+
       const self = this;
       setTimeout(() => {
         console.log('scrollToBottom');
         self.scrollToBottom();
       }, 5000);
+    },
+    toggleChatSizeBigger() {
+      this.isMinimized = false;
+      this.isChatWindowBigger = !this.isChatWindowBigger;
     },
     fetchData() {
       const apiUrl = this.baseUrlForApiCall + 'get_conversation';
@@ -226,10 +241,12 @@ export default {
           this.emitter.emit(eventName, { graphData, recommendations, assets });
         }
         else if(this.pageName === 'stock-picker-discussion') {
-          const reportRow = response.data.reportRow;
+          if(response.data.reportRow) {
+            const reportRow = response.data.reportRow;
 
-          const eventName = "update-stock-report";
-          this.emitter.emit(eventName, { reportRow });
+            const eventName = "update-stock-report";
+            this.emitter.emit(eventName, { reportRow });
+          }
         }
 
         this.scrollToBottom();
@@ -246,7 +263,6 @@ export default {
           chatMessages.scrollTop = chatMessages.scrollHeight;
           console.log('scrollToBottom', chatMessages.scrollHeight);
         }
-        
       });
     },
     startVoiceInput() {

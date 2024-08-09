@@ -64,8 +64,7 @@
             </el-table-column>
             <el-table-column prop="pdf_name" label="PDF Name">
               <template #default="props">
-                <!-- <el-link :underline="false" :href="props.row.pdf_path" target="_blank" type="primary">{{ props.row.pdf_name }}</el-link> -->
-                 {{ props.row.pdf_name }}
+                <el-link :underline="false" :href="mfToGetPdfUrl(props.row.id)" target="_blank" type="primary">{{ props.row.pdf_name }}</el-link>
               </template>
             </el-table-column>
             <el-table-column prop="created_at" label="Uploaded On" width="150">
@@ -230,6 +229,7 @@ export default {
       axios.get(apiUrl, {
         params: {
           stock: this.stock,
+          reportOfUid: this.reportOfUid,
           userEmail: localStorage.getItem('email'),
           token: localStorage.getItem('token'),
         },
@@ -402,10 +402,10 @@ export default {
           }
         }
       });
-    
-
-
-    }
+    },
+    mfToGetPdfUrl: function(pdfId) {
+      return this.baseUrlForApiCall + "stock/get-pdf/" + pdfId + "?userEmail=" + localStorage.getItem('email') + "&stock=" + this.stock;
+    },
   },
 };
 </script>

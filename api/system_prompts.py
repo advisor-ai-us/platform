@@ -111,6 +111,8 @@ You are a financial analysis assistant tasked with analyzing various financial d
     }
   }
 }
+
+\n\nNote: if you have an error in the response, please return the error message in the "MsgForUser" key.
 """
 
 STOCK_PICKER_SYSTEM_REPORT = """

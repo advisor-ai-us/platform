@@ -53,7 +53,7 @@ body {
   border: 1px solid #ccc;
   transition: height 0.3s;
   width: 30%;
-  z-index: 999;
+  z-index: 1000;
 }
 .chat-container.minimized {
   height: 40px;
@@ -80,8 +80,11 @@ body {
 }
 .chat-messages {
   flex: 1;
-  max-height: 358px;
+  max-height: calc(100% - 95px);
   overflow-y: auto;
+}
+.chat-container.bigger {
+  height: 100%;
 }
 .chat-message.system {
   display: none;

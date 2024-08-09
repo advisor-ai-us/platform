@@ -600,12 +600,19 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
     
     response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
 
-    #return jsonify({"response": response})
-
     if isinstance(response, str):
-        # This means an error occurred
-        logging.error(f"Error in OpenAI API call: {response}")
-        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+        try:
+            if response.startswith("Error code:"):
+                json_part = response.split(" - ", 1)[1].replace("'", '"').replace("None", "null")
+                response_dict = json.loads(json_part)
+                error_message = response_dict.get('error', {}).get('message', 'An unknown error occurred.')
+        except AttributeError:
+            if "Request too large" in response:
+                error_message = "The request is too large. Please try again with a smaller request."
+            else:
+                error_message = "An error occurred while processing your request. Please try again later."
+
+        return jsonify({"response": error_message})
 
     if response.choices and response.choices[0].message.content:
         responseData = ''
@@ -1545,11 +1552,6 @@ def upload_pdf():
     if not files or len(files) == 0:
         return jsonify({"error": "No files uploaded"}), 400
 
-    # Define the folder path to save the PDF files
-    pdf_folder = os.path.join('pdf_uploads', email, stock)
-    if not os.path.exists(pdf_folder):
-        os.makedirs(pdf_folder)
-
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
@@ -1561,7 +1563,7 @@ def upload_pdf():
                    heading TEXT DEFAULT NULL,
                    pdf_name TEXT NOT NULL,
                    pdf_content TEXT NOT NULL,
-                   pdf_path TEXT NOT NULL,
+                   pdf_file_data BLOB DEFAULT NULL,
                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                  )''')
 
@@ -1569,16 +1571,21 @@ def upload_pdf():
     for file in files:
         timestamp = int(datetime.datetime.now().timestamp())
         pdf_name = f"{timestamp}_{file.filename}"
-        pdf_path = os.path.join(pdf_folder, pdf_name)
-        file.save(pdf_path)
+
+        # Read the file content as binary data
+        pdf_file_data = file.read()
+
+        # Reset the file pointer to the beginning
+        file.seek(0)
 
         # Extract the content of the PDF file
         pdf_content = ""
-        with fitz.open(pdf_path) as doc:
+        with fitz.open(stream=pdf_file_data, filetype="pdf") as doc:
             for page in doc:
                 pdf_content += page.get_text()
 
-        c.execute(f"INSERT INTO {table_name} (heading, pdf_name, pdf_content, pdf_path) VALUES (?, ?, ?, ?)", (heading, pdf_name, pdf_content, pdf_path))
+        c.execute(f"INSERT INTO {table_name} (heading, pdf_name, pdf_content, pdf_file_data) VALUES (?, ?, ?, ?)",
+                  (heading, pdf_name, pdf_content, pdf_file_data))
 
     conn.commit()
     conn.close()
@@ -1590,17 +1597,33 @@ def get_pdfs():
     token = request.args.get('token')
     email = request.args.get('userEmail')
     stock = request.args.get('stock')
+    reportOfUid = request.args.get('reportOfUid')
 
     if not decode_token_and_get_email(token) == email:
         return jsonify({"error": "Invalid token"}), 401
 
-    db_name = get_user_db(email)
+    if reportOfUid:
+        db_name = os.path.join(database_path, "central-coordinator.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT email FROM users WHERE id = ?", (reportOfUid,))
+        row = c.fetchone()
+        conn.close()
+
+        reportOfEmail = row[0] if row else None
+    else:
+        reportOfEmail = email
+
+    if not reportOfEmail:
+        return jsonify({"error": "Invalid reportOfUid"}), 400
+
+    db_name = get_user_db(reportOfEmail)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
     table_name = f"{stock}_stock_pdfs"
     try:
-        c.execute(f"SELECT id, heading, pdf_name, pdf_content, pdf_path, created_at FROM {table_name}")
+        c.execute(f"SELECT id, heading, pdf_name, pdf_content, created_at FROM {table_name}")
         rows = c.fetchall()
         conn.close()
 
@@ -1609,11 +1632,33 @@ def get_pdfs():
             "heading": row[1],
             "pdf_name": row[2],
             "pdf_content": row[3],
-            "pdf_path": row[4],
-            "created_at": row[5]
+            "created_at": row[4]
         } for row in rows])
     except sqlite3.OperationalError:
         return jsonify([])
+
+@app.route('/acr/stock/get-pdf/<int:pdf_id>', methods=['GET'])
+def get_pdf(pdf_id):
+    email = request.args.get('userEmail')
+    stock = request.args.get('stock')
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    table_name = f"{stock}_stock_pdfs"
+    c.execute(f"SELECT pdf_file_data FROM {table_name} WHERE id = ?", (pdf_id,))
+    pdf_data = c.fetchone()
+
+    conn.close()
+
+    if pdf_data and pdf_data[0]:
+        return pdf_data[0], 200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': f'inline; filename={pdf_id}.pdf'
+        }
+    else:
+        return jsonify({"error": "PDF not found"}), 404
 
 @app.route('/acr/stock/pdf/update-heading', methods=['POST'])
 def update_pdf_heading():
