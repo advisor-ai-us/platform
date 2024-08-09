@@ -249,5 +249,8 @@ header p {
     font-size: 1.5em;
     line-height: 26px;
   }
+  body .feature h3 {
+    line-height: 22px;
+  }
 }
 </style>
