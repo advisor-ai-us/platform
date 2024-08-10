@@ -2,6 +2,9 @@
   <div class="advisor-personality-tabs">
     <el-tabs v-model="activePersonality" @tab-click="handleTabClick">
       <el-tab-pane v-for="tab in enabledTabs" :key="tab.name" :name="tab.name" :label="tab.label"></el-tab-pane>
+      <el-tab-pane label="Referral Management" name="referral">
+        <ReferralManagement />
+      </el-tab-pane>
     </el-tabs>
     <component :is="currentPersonalityComponent"></component>
 
@@ -18,6 +21,10 @@
           <el-dropdown-menu>
             <el-dropdown-item>
               <el-link :href="downloadDB" :underline="false">Download DB</el-link>
+            </el-dropdown-item>
+
+              <el-dropdown-item>
+                <el-link @click="activePersonality = 'referral'" :underline="false">Refer</el-link>
             </el-dropdown-item>
             <el-dropdown-item><ManageOpenAiComponent /></el-dropdown-item>
             <el-dropdown-item><SettingsComponent @settings-updated="updateTabSettings" /></el-dropdown-item>
@@ -42,6 +49,7 @@ import DocumentKeeper from './DocumentKeeper.vue';
 import ManageOpenAiComponent from './ManageOpenAiComponent.vue';
 import SettingsComponent from './SettingsComponent.vue';
 import StockRecommendations from './StockRecommendations.vue';
+import ReferralManagement from './ReferralManagement.vue';
 
 export default {
   data() {
@@ -73,6 +81,7 @@ export default {
     ManageOpenAiComponent,
     SettingsComponent,
     StockRecommendations,
+    ReferralManagement,
   },
   props: {
     defaultActiveTab: {
@@ -100,6 +109,7 @@ export default {
         case 'Legacy': return LegacySpecialist;
         case 'Files': return DocumentKeeper;
         case 'StockRecommendations': return StockRecommendations;
+        case 'referral': return ReferralManagement;
         default: return null;
       }
     },
