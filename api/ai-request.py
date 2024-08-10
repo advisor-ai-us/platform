@@ -137,6 +137,7 @@ def get_user_db(email):
                  role TEXT NOT NULL,
                  content TEXT NOT NULL,
                  display_on_page TEXT DEFAULT NULL,
+                 prompt_details TEXT DEFAULT NULL,
                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
@@ -333,11 +334,13 @@ def get_system_prompt_with_financial_documents(systemPrompt, email, stock):
 
     return [{"role": "system", "content": systemPrompt}]
 
-def save_conversation(email, role, content, display_on_page):
+def save_conversation(email, role, content, display_on_page, text_sent_to_ai_in_the_prompt):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
-    c.execute("INSERT INTO conversation_history (role, content, display_on_page) VALUES (?, ?, ?)", (role, content, display_on_page))
+
+    prompt_details = json.dumps(text_sent_to_ai_in_the_prompt) if role == "assistant" else None
+    c.execute("INSERT INTO conversation_history (role, content, display_on_page, prompt_details) VALUES (?, ?, ?, ?)", (role, content, display_on_page, prompt_details))
     conn.commit()
     conn.close()
 
@@ -456,11 +459,14 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
         responseData = {"MsgForUser": content, "memory": {}}
 
     # Ensure responseData is a dictionary before accessing keys
+    prompt_details = text_sent_to_ai_in_the_prompt
     if isinstance(responseData, dict):
         MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
         if MsgForUser != "An error occurred. Please try again.":
-            save_conversation(userEmail, "user", message, display_on_page)
-            save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+            prompt_details.append({"role": "response", "content": content})
+
+            save_conversation(userEmail, "user", message, display_on_page, None)
+            save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
 
             memory = responseData.get('memory')
             save_memory(userEmail, memory)
@@ -479,7 +485,7 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
     rows = c.fetchall()
     conn.close()
 
-    return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "dashboard": [{"key": key, "value": value} for key, value in rows], "model": model})
+    return jsonify({"response": MsgForUser, "responseData": content, "prompt_details": json.dumps(prompt_details), "dashboard": [{"key": key, "value": value} for key, value in rows], "model": model})
   else:
     return jsonify({"response": response})
 
@@ -520,11 +526,14 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
             responseData = {"MsgForUser": content, "graph_data": {}, "recommendations": []}
 
         # Ensure responseData is a dictionary before accessing keys
+        prompt_details = text_sent_to_ai_in_the_prompt
         if isinstance(responseData, dict):
             MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
             if MsgForUser != "An error occurred. Please try again.":
-                save_conversation(userEmail, "user", message, display_on_page)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+                prompt_details.append({"role": "response", "content": content})
+
+                save_conversation(userEmail, "user", message, display_on_page, None)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
     
                 graph_data = responseData.get('graph_data')
                 save_graph_data(userEmail, graph_data)
@@ -568,7 +577,7 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
 
         return jsonify({"response": MsgForUser, 
                         "responseData": content, 
-                        "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, 
+                        "prompt_details": json.dumps(prompt_details), 
                         "graph_data": [{"key": key, "value": value} for key, value in rows], 
                         "recommendations": [recommendation[0] for recommendation in recommendations], 
                         "model": model,
@@ -624,11 +633,14 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
             responseData = {"MsgForUser": content}
 
         # Ensure responseData is a dictionary before accessing keys
+        prompt_details = text_sent_to_ai_in_the_prompt
         if isinstance(responseData, dict):
             MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
             if MsgForUser != "An error occurred. Please try again.":
-                save_conversation(userEmail, "user", message, display_on_page)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+                prompt_details.append({"role": "response", "content": content})
+
+                save_conversation(userEmail, "user", message, display_on_page, None)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
 
                 # save recommendation
                 # recommendation = responseData.get('recommendation')
@@ -712,7 +724,7 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
         conn.commit()
         conn.close()
 
-        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model, "reportRow": reportData})
+        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "reportRow": reportData, "prompt_details": json.dumps(prompt_details)})
     else:
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
@@ -754,15 +766,18 @@ def ai_request_stock_picker_system_report(userEmail, message, display_on_page, s
             responseData = {"MsgForUser": content}
 
         # Ensure responseData is a dictionary before accessing keys
+        prompt_details = text_sent_to_ai_in_the_prompt
         if isinstance(responseData, dict):
             MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
             if MsgForUser != "An error occurred. Please try again.":
-                save_conversation(userEmail, "user", message, display_on_page)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page)
+                prompt_details.append({"role": "response", "content": content})
+
+                save_conversation(userEmail, "user", message, display_on_page, None)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
         else:
             MsgForUser = "An error occurred. Please try again."
 
-        return jsonify({"response": MsgForUser, "responseData": content, "text_sent_to_ai_in_the_prompt": text_sent_to_ai_in_the_prompt, "model": model})
+        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
 
 def save_stock_report_data(email, stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis):
     db_name = get_user_db(email)
@@ -831,15 +846,26 @@ def get_stock_report():
     reportRow = c.fetchone()
     conn.close()
 
-    reportData = {
-        "recommendation": reportRow[0] if reportRow else None,
-        "justification": reportRow[1] if reportRow else None,
-        "discount_rate": reportRow[2] if reportRow[2] else None,
-        "net_present_value": reportRow[3] if reportRow[3] else None,
-        "comparison": reportRow[4] if reportRow[4] else None,
-        "graph_data_x_axis": json.loads(reportRow[5]) if reportRow[5] else None,
-        "graph_data_y_axis": json.loads(reportRow[6]) if reportRow[6] else None
-    }
+    if not reportRow:
+        reportData = {
+            "recommendation": None,
+            "justification": None,
+            "discount_rate": None,
+            "net_present_value": None,
+            "comparison": None,
+            "graph_data_x_axis": None,
+            "graph_data_y_axis": None
+        }
+    else:
+        reportData = {
+            "recommendation": reportRow[0] if reportRow else None,
+            "justification": reportRow[1] if reportRow else None,
+            "discount_rate": reportRow[2] if reportRow[2] else None,
+            "net_present_value": reportRow[3] if reportRow[3] else None,
+            "comparison": reportRow[4] if reportRow[4] else None,
+            "graph_data_x_axis": json.loads(reportRow[5]) if reportRow[5] else None,
+            "graph_data_y_axis": json.loads(reportRow[6]) if reportRow[6] else None
+        }
 
     # Get the all user_id from the stock_reports table where the stock_name is the stock.
     db_name = os.path.join(database_path, "central-coordinator.db")
@@ -941,6 +967,89 @@ def save_dashboard_data(email, dashboard):
         print("Dashboard key is missing in responseData")
 
 def save_memory(email, memory):
+    if memory:
+        action = memory.pop('Action', None)  # Remove the action key and get its value
+        
+        if action:
+            # Database operations
+            db_name = get_user_db(email)
+            conn1 = sqlite3.connect(db_name)
+            c1 = conn1.cursor()
+
+            # Check if memory contains multiple key-value pairs or a single key-value pair
+            if 'key' in memory and 'value' in memory:
+                # Handle single key-value pair
+                key = memory.get('key')
+                value = memory.get('value')
+                
+                if not isinstance(key, str):
+                    key = str(key)
+                if not isinstance(value, str):
+                    value = str(value)
+
+                # Check if the key already exists in the memory table
+                c1.execute("SELECT 1 FROM basic_memory WHERE key = ?", (key,))
+                exists = c1.fetchone()
+
+                if action == 'add':
+                    if exists:
+                        # If the key exists, update the value
+                        c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                    else:
+                        # If the key does not exist, insert a new key-value pair
+                        c1.execute("INSERT INTO basic_memory (key, value) VALUES (?, ?)", (key, value))
+                elif action == 'edit':
+                    if exists:
+                        # If the key exists, update the value
+                        c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                    else:
+                        print(f"Key '{key}' does not exist in the basic_memory table to edit.")
+                elif action == 'delete':
+                    if exists:
+                        # If the key exists, delete the row
+                        c1.execute("DELETE FROM basic_memory WHERE key = ?", (key,))
+                    else:
+                        print(f"Key '{key}' does not exist in the basic_memory table to delete.")
+            
+            else:
+                # Handle multiple key-value pairs
+                for key, value in memory.items():
+                    if not isinstance(key, str):
+                        key = str(key)
+                    if not isinstance(value, str):
+                        value = str(value)
+
+                    # Check if the key already exists in the memory table
+                    c1.execute("SELECT 1 FROM basic_memory WHERE key = ?", (key,))
+                    exists = c1.fetchone()
+
+                    if action == 'add':
+                        if exists:
+                            # If the key exists, update the value
+                            c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                        else:
+                            # If the key does not exist, insert a new key-value pair
+                            c1.execute("INSERT INTO basic_memory (key, value) VALUES (?, ?)", (key, value))
+                    elif action == 'edit':
+                        if exists:
+                            # If the key exists, update the value
+                            c1.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (value, key))
+                        else:
+                            print(f"Key '{key}' does not exist in the basic_memory table to edit.")
+                    elif action == 'delete':
+                        if exists:
+                            # If the key exists, delete the row
+                            c1.execute("DELETE FROM basic_memory WHERE key = ?", (key,))
+                        else:
+                            print(f"Key '{key}' does not exist in the basic_memory table to delete.")
+
+            conn1.commit()
+            conn1.close()
+        else:
+            print("Action key is missing in the memory object")
+    else:
+        print("Memory key is missing in responseData")
+
     if memory:
         action = memory.pop('Action', None)  # Remove the action key and get its value
         if action:
@@ -1093,7 +1202,7 @@ def get_conversation():
   db_name = get_user_db(userEmail)
   conn = sqlite3.connect(db_name)
   c = conn.cursor()
-  c.execute("SELECT role, content FROM conversation_history WHERE display_on_page = ? ORDER BY timestamp", (display_on_page,))
+  c.execute("SELECT role, content, prompt_details FROM conversation_history WHERE display_on_page = ? ORDER BY timestamp", (display_on_page,))
   rows = c.fetchall()
   conn.close()
 
@@ -1116,7 +1225,7 @@ def get_conversation():
   if not rows:
     return jsonify({"conversation": []})
   else:
-    return jsonify({"conversation": [{"role": role, "content": content} for role, content in rows], "basic_memory": [{"key": key, "value": value} for key, value in rows1], "dashboard": [{"key": key, "value": value} for key, value in rows2]})
+    return jsonify({"conversation": [{"role": role, "content": content, "prompt_details": prompt_details} for role, content, prompt_details in rows], "basic_memory": [{"key": key, "value": value} for key, value in rows1], "dashboard": [{"key": key, "value": value} for key, value in rows2]})
 
 @app.route('/acr/signup', methods=['GET', 'POST'])
 def signup():
@@ -1635,7 +1744,65 @@ def get_pdfs():
             "created_at": row[4]
         } for row in rows])
     except sqlite3.OperationalError:
-        return jsonify([])
+        if reportOfUid:
+            # return blank
+            return jsonify([])
+        else:
+            db_name = os.path.join(database_path, "central-coordinator.db")
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+            c.execute("SELECT email FROM users WHERE id = 1")
+            row = c.fetchone()
+            conn.close()
+
+            central_coordinator_email = row[0] if row else None
+
+            if not central_coordinator_email:
+                return jsonify({"error": "Central coordinator email not found"}), 404
+
+            central_coordinator_db_name = get_user_db(central_coordinator_email)
+            conn = sqlite3.connect(central_coordinator_db_name)
+            c = conn.cursor()
+
+            table_name = f"{stock}_stock_pdfs"
+            c.execute(f"SELECT heading, pdf_name, pdf_content, pdf_file_data FROM {table_name}")
+            rows = c.fetchall()
+            conn.close()
+
+            # Insert the PDFs into the current user's database
+            db_name = get_user_db(reportOfEmail)
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+
+            c.execute(f'''CREATE TABLE IF NOT EXISTS {table_name} (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            heading TEXT DEFAULT NULL,
+                            pdf_name TEXT NOT NULL,
+                            pdf_content TEXT NOT NULL,
+                            pdf_file_data BLOB DEFAULT NULL,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )''')
+
+            for row in rows:
+                c.execute(f"INSERT INTO {table_name} (heading, pdf_name, pdf_content, pdf_file_data) VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
+
+            conn.commit()
+            conn.close()
+
+            # Get the PDFs from the current user's database
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+            c.execute(f"SELECT id, heading, pdf_name, pdf_content, created_at FROM {table_name}")
+            rows = c.fetchall()
+            conn.close()
+
+            return jsonify([{
+                "id": row[0],
+                "heading": row[1],
+                "pdf_name": row[2],
+                "pdf_content": row[3],
+                "created_at": row[4]
+            } for row in rows])
 
 @app.route('/acr/stock/get-pdf/<int:pdf_id>', methods=['GET'])
 def get_pdf(pdf_id):
@@ -1705,14 +1872,14 @@ def delete_pdf():
     c = conn.cursor()
 
     table_name = f"{stock}_stock_pdfs"
-    c.execute(f"SELECT pdf_path FROM {table_name} WHERE id = ?", (pdf_id,))
-    row = c.fetchone()
+    # c.execute(f"SELECT pdf_path FROM {table_name} WHERE id = ?", (pdf_id,))
+    # row = c.fetchone()
 
-    if not row:
-        return jsonify({"error": "PDF not found"}), 404
+    # if not row:
+    #     return jsonify({"error": "PDF not found"}), 404
 
-    pdf_path = row[0]
-    os.remove(pdf_path)
+    #pdf_path = row[0]
+    #os.remove(pdf_path)
 
     c.execute(f"DELETE FROM {table_name} WHERE id = ?", (pdf_id,))
     conn.commit()

@@ -382,6 +382,11 @@ export default {
         this.projectedProfitChart.destroy();
       }
 
+      // Set explicit chart size if needed
+      const canvas = document.getElementById('projected-profit-chart');
+      canvas.style.width = '100%';
+      canvas.style.height = '400px';
+
       this.projectedProfitChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -402,6 +407,9 @@ export default {
           }
         }
       });
+
+      // Optionally, force the chart to update
+      this.projectedProfitChart.update();
     },
     mfToGetPdfUrl: function(pdfId) {
       return this.baseUrlForApiCall + "stock/get-pdf/" + pdfId + "?userEmail=" + localStorage.getItem('email') + "&stock=" + this.stock;
@@ -432,5 +440,9 @@ h2.stock-picker-content__title {
 .stock-picker-manage_pdf__header h3 {
     margin: 0 0 10px 0;
     font-weight: 400;
+}
+#projected-profit-chart {
+  width: 100% !important;
+  height: 400px !important;
 }
 </style>

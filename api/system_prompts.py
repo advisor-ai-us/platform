@@ -71,7 +71,8 @@ Return response only in JSON format with the following structure:
   }
 }
 
-Note: Ensure that the graph_data is always populated with actual values based on the assets data provided based on account type. The x_axis for the line chart should be dates, and the y_axis should be the corresponding portfolio values. The pie chart should represent the current asset allocation percentages.
+Note: Ensure that the graph_data is always populated with actual values based on the assets data provided based on account type. The x_axis for the line chart should be dates, and the y_axis should be the corresponding portfolio values. The pie chart should represent the current asset allocation percentages. Also, ensure that the response should not include any comments or instructions, only the required data. 
+\nIn the memory section in the response, include the action taken as "add/edit/delete" and the key-value pair that was updated. For example: "memory": {"Action": "add", "number_of_children": 2}. The key should be the name of the field that was updated, and the value should be the new value of that field.
 """
 
 DASHBOARD_PROMPT = """

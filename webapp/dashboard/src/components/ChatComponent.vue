@@ -7,6 +7,10 @@
         <el-button class="close-button" link @click="toggleChatSizeBigger" v-if="!isChatWindowBigger">
           <i class="fa fa-window-restore"></i>
         </el-button>
+        <el-button class="close-button" link @click="toggleChatSizeBigger" v-if="isChatWindowBigger">
+          <i class="fa fa-window-maximize"></i>
+        </el-button>
+
         <el-button v-if="isMinimized" class="toggle-button" link @click="toggleChat">
           <i class="fa fa-window-maximize"></i>
         </el-button>
@@ -19,6 +23,25 @@
       <el-scrollbar class="chat-messages">
         <div class="chat-message" v-for="(message, index) in conversationHistory" :key="index" :class="message.role">
           <div class="message" :class="message.role">
+            <el-popover placement="left" width="500" trigger="click" v-if="message.role === 'assistant'">
+              <template #reference>
+                  <el-button type="info" link :icon="Setting" style="float: right;"></el-button>
+              </template>
+              <el-row class="prompt-details">
+                <el-collapse v-model="activePromptName" accordion>
+                  <el-collapse-item title="System Prompt" name="1">
+                    <p v-html="getPromptValue(message.prompt_details, 'system')"></p>
+                  </el-collapse-item>
+                  <el-collapse-item title="User" name="2">
+                    <p v-html="getPromptValue(message.prompt_details, 'user')"></p>
+                  </el-collapse-item>
+                  <el-collapse-item title="Response from LLM" name="3">
+                    <p v-html="getPromptValue(message.prompt_details, 'response')"></p>
+                  </el-collapse-item>
+                </el-collapse>
+              </el-row>
+            </el-popover>
+
             <div v-html="formattedMessage(message.content)"></div>
           </div>
         </div>
@@ -51,6 +74,10 @@
   </div>
 </template>
 
+<script setup>
+import { Setting } from '@element-plus/icons-vue';
+</script>
+
 <script>
 import axios from 'axios';
 
@@ -69,6 +96,7 @@ export default {
       activeClass: 'inactive',
       timer: null,
       elapsedTime: 0,
+      activePromptName: '1',
     };
   },
   props: {
@@ -224,6 +252,7 @@ export default {
 
         this.conversationHistory.push({
           content: response.data.response,
+          prompt_details: response.data.prompt_details,
           role: 'assistant'
         });
 
@@ -289,6 +318,24 @@ export default {
       clearInterval(this.timer);
       this.timer = null;
     },
+    getPromptValue(promptDetails, role) {
+      if (!promptDetails) {
+        return '';
+      }
+      
+      try {
+        promptDetails = JSON.parse(promptDetails);
+        const prompt = promptDetails.find((item) => item.role === role);
+        
+        if (!prompt || !prompt.content) {
+          return '';
+        }
+
+        return prompt.content.replace(/\n/g, "<br>");
+      } catch (error) {
+        return '';
+      }
+    }
   },
   computed: {
     formattedTime() {
@@ -318,5 +365,9 @@ button.el-button.is-link.microphone-button.active {
     color: #000;
     background: #fff;
     padding: 0 8px;
+}
+.el-row.prompt-details {
+    max-height: 90vh;
+    overflow-y: auto;
 }
 </style>
