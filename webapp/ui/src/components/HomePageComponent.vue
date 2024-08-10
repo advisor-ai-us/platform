@@ -3,6 +3,7 @@
     <div class="auth-links">
       <el-button type="primary" @click="$router.push('/login')">Login</el-button>
       <el-button type="success" @click="$router.push('/waitlist')">Join Waitlist</el-button>
+      <el-button type="info" @click="$router.push('/pricing')">Pricing</el-button>
     </div>
 
     <header>

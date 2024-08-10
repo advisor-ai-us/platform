@@ -6,6 +6,7 @@ import JoinWaitlistComponent from './components/JoinWaitlistComponent.vue';
 import UserEnhancedReport from './components/stock-picker/UserEnhancedReport.vue';
 import SystemReport from './components/stock-picker/SystemReport.vue';
 import DemoPageComponent from './components/DemoPageComponent.vue';
+import PricingComponent from './components/PricingComponent.vue';
 
 const routes = [
   {
@@ -42,6 +43,11 @@ const routes = [
     path: '/:stock/discuss/:reportOfUid?',
     name: 'DiscussStockReport',
     component: UserEnhancedReport
+  },
+  {
+    path: '/pricing',
+    name: 'Pricing',
+    component: PricingComponent
   }
 ];
 
