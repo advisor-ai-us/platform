@@ -2,7 +2,7 @@
 
 [![Watch the video](https://img.youtube.com/vi/7pSMZXBBb-c/hqdefault.jpg)](https://www.youtube.com/watch?v=7pSMZXBBb-c)
 
-[Watch the demo video on YouTube](https://www.youtube.com/watch?v=VIDEO_ID)
+[Watch the demo video on YouTube](https://www.youtube.com/watch?v=7pSMZXBBb-c)
 
 # Features working:
 1. Signup and that adds the user to the central users table. July 28th 2024
