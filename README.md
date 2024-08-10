@@ -21,7 +21,7 @@
 
 ### On a mac with a fish shell
 
-> cd platform/webapp/dashboard
+> cd platform/webapp/ui
 
 > brew install yarn
 

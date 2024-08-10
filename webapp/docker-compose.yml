@@ -17,7 +17,7 @@ services:
     volumes:
       - /gt/gt-prog-repos/platform/webapp:/gt/gt-prog-repos/platform/webapp
       - /gt/gt-prog-repos/platform/webapp/etc-supervisor-conf.d-services.conf:/etc/supervisor/conf.d/services.conf
-      - /gt/gt-prog-repos/platform/webapp/dashboard:/var/www/html
+      - /gt/gt-prog-repos/platform/webapp/ui:/var/www/html
 
 networks:
   finance:
