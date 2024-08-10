@@ -1,14 +1,6 @@
-# Feature pipeline:
+# Demo video
 
-1. I added an asset using the chat interface but that did not update the table without refreshing.
-2. The graphs are not good.
-3. Join waitlist feature is giving an error. When I submit the form it gives error code 400.
-4. I said I work for openai but my employment status still says "employment in own startup"
-5. I added my date of birth but that did not get saved to basic_memory table.
-6. Voice input like: https://x.com/JonathanRoss321/status/1815777714642858313 is not working.
-7. Create a new repo and commit the code again. Otherwise from history people can get the api key.
-8. Launch website.
-
+[![Watch the video](https://img.youtube.com/vi/7pSMZXBBb-c/hqdefault.jpg)](https://www.youtube.com/watch?v=7pSMZXBBb-c)
 
 # Features working:
 1. Signup and that adds the user to the central users table. July 28th 2024
