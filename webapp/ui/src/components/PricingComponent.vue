@@ -18,18 +18,40 @@
       </div>
       <div class="usage-info">
         <h3>Usage Information</h3>
-        <p>For more details on what constitutes normal usage and how additional costs are calculated, please see our <el-link type="primary" href="#">Usage Policy</el-link>.</p>
+        <p>For more details, please see our <el-button type="text" @click="toggleUsagePolicy">Usage Policy</el-button>.</p>
       </div>
+      <transition name="fade">
+        <div v-show="showUsagePolicy" class="usage-policy">
+          <h3>Usage Policy</h3>
+          <p>Normal usage is defined as up to 100 API calls per day or 3000 API calls per month, whichever comes first.</p>
+          <p>If you exceed this limit:</p>
+          <ul>
+            <li>You will be notified when you reach 80% of the normal usage limit.</li>
+            <li>Any usage beyond the normal limit will incur additional charges based on our current API costs.</li>
+            <li>These additional charges will be billed at the end of your billing cycle.</li>
+          </ul>
+          <p>We reserve the right to modify these limits and charges, but as a Pioneer user, your base subscription price will remain locked in for life.</p>
+          <el-button type="text" @click="toggleUsagePolicy">Close</el-button>
+        </div>
+      </transition>
     </div>
   </template>
   
   <script>
   export default {
+    data() {
+      return {
+        showUsagePolicy: false
+      }
+    },
     methods: {
       signUp(pricingType) {
         // Implement sign-up logic here
         console.log(`Signing up for ${pricingType} pricing`);
         this.$router.push('/waitlist');
+      },
+      toggleUsagePolicy() {
+        this.showUsagePolicy = !this.showUsagePolicy;
       }
     }
   }
@@ -83,5 +105,19 @@
     padding: 1rem;
     border-radius: 4px;
   }
-  </style>
   
+  .usage-policy {
+    background-color: #f0f0f0;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity 0.5s;
+  }
+  .fade-enter, .fade-leave-to {
+    opacity: 0;
+  }
+  </style>
