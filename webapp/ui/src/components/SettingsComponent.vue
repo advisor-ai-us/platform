@@ -32,6 +32,7 @@
           { name: 'Legacy', label: 'Legacy Specialist', enabled: false },
           { name: 'Files', label: 'Document Keeper', enabled: false },
           { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: false },
+          { name: 'referral', label: 'Referral Management', enabled: false },
         ],
       };
     },
