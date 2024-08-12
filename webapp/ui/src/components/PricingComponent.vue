@@ -1,4 +1,11 @@
 <template>
+  <div>
+    <header>
+      <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
+      <h1>Get Started Now</h1>
+      <p>An AI Powered Collaborative Investment Analysis</p>
+    </header>
+  
     <div class="pricing-container">
       <h1>Pricing</h1>
       <p class="beta-notice">
@@ -35,7 +42,8 @@
         </div>
       </transition>
     </div>
-  </template>
+  </div>
+</template>
   
   <script>
   export default {

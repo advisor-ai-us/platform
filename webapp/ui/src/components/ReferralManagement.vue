@@ -1,7 +1,15 @@
 <template>
-  <div class="referral-management">
-    <h2>Referral Management</h2>
-    <el-button @click="generateNewCode" type="primary">Generate New Referral Code</el-button>
+  <div class="referral-management" style="padding: 0 10px;">
+    <h2 style="display: inline-block; margin-bottom: 10px;">Referral Management</h2>
+    <el-button @click="generateNewCode" type="primary" size="small" round style="display: inline-block; margin: 0 0 10px 10px;" :disabled="isReferralCodeGenerating">
+      Generate New Referral Code
+    </el-button>
+    <el-icon class="is-loading" v-if="isReferralCodeGenerating" style="margin-left: 10px;color:#ff0000;">
+      <Loading />
+    </el-icon>
+    <span v-if="isReferralCodeGenerating" style="color:#ff0000;vertical-align: text-bottom;font-style: italic;">
+      Generating new referral code...
+    </span>
     <el-table :data="referralCodes" style="width: 100%">
       <el-table-column prop="code" label="Referral Code" />
       <el-table-column prop="signups" label="Signups" />
@@ -10,11 +18,18 @@
   </div>
 </template>
 
+<script setup>
+import { Loading } from '@element-plus/icons-vue';
+</script>
+
 <script>
+import axios from 'axios';
+
 export default {
   name: 'ReferralManagement',
   data() {
     return {
+      isReferralCodeGenerating: false,
       referralCodes: [
         // Sample data, replace with actual data from your backend
         { code: 'ABC123', signups: 5, createdAt: '2023-04-15' },
@@ -22,12 +37,62 @@ export default {
       ],
     };
   },
+  mounted() {
+    // Fetch referral codes from the backend
+    const apiUrl = this.baseUrlForApiCall + 'referral-codes';
+    axios.get(apiUrl, {
+        params: {
+          email: localStorage.getItem('email'),
+          token: localStorage.getItem('token'),
+        },
+      }
+    )
+    .then((response) => {
+      this.referralCodes = response.data;
+    })
+    .catch((error) => {
+      console.error('Error fetching referral codes:', error);
+    });
+  },
   methods: {
+    createRandomCode(length) {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      const charactersLength = characters.length;
+      for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+      }
+      return result;
+    },
     generateNewCode() {
-      // Implement the logic to generate a new referral code
-      // This should typically involve a backend API call
-      console.log('Generating new referral code');
-      // After generating, update the referralCodes array with the new code
+      this.isReferralCodeGenerating = true;
+      const newReferralCode = this.createRandomCode(8);
+      const apiUrl = this.baseUrlForApiCall + 'referral-codes';
+      axios.post(apiUrl, { 
+          code: newReferralCode,
+          email: localStorage.getItem('email'),
+          token: localStorage.getItem('token'),
+        })
+        .then((response) => {
+          this.referralCodes.push(
+            { 
+              code: newReferralCode, 
+              signups: 0, 
+              createdAt: new Date().toISOString().slice(0, 19).replace('T', ' ') 
+            }
+          );
+
+          this.$message({
+            message: 'New referral code generated successfully',
+            type: 'success',
+          });
+        })
+        .catch((error) => {
+          console.error('Error generating new referral code:', error);
+        })
+        .finally(() => {
+          this.isReferralCodeGenerating = false;
+        });
     },
   },
 };

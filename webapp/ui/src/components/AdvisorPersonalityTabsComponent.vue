@@ -1,5 +1,5 @@
 <template>
-  <div class="advisor-personality-tabs">
+  <div class="advisor-personality-tabs" style="padding: 0 10px;">
     <el-tabs v-model="activePersonality" @tab-click="handleTabClick">
       <el-tab-pane v-for="tab in enabledTabs" :key="tab.name" :name="tab.name" :label="tab.label"></el-tab-pane>
     </el-tabs>
@@ -211,3 +211,15 @@ export default {
   }
 };
 </script>
+
+<style>
+li.el-dropdown-menu__item {
+    display: block;
+}
+li.el-dropdown-menu__item button.el-button.is-link {
+    width: 100%;
+    display: block;
+    text-align: left;
+    padding: 5px 0;
+}
+</style>

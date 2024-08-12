@@ -9,6 +9,9 @@
         width="30%">
         <el-form>
           <el-form-item v-for="tab in tabSettings" :key="tab.name" :label="tab.label">
+            <el-tag :type="tab.name === 'referral' || tab.name === 'portfolio' ? 'success' : 'warning'" effect="dark" size="small" round style="margin-right: 10px;">
+              {{ tab.name === 'referral' || tab.name === 'portfolio' ? 'Beta' : 'Alpha' }}
+            </el-tag>
             <el-switch v-model="tab.enabled" @change="saveSettings"></el-switch>
           </el-form-item>
         </el-form>

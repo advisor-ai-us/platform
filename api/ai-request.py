@@ -89,7 +89,7 @@ def get_response_from_openai(api_key, model, messages):
         return str(e)
 
 # Create users database if it doesn't exist
-def init_users_db():
+def init_central_coordinator_db():
     db_name = os.path.join(database_path, "central-coordinator.db")
     if not os.path.exists(database_path):
         os.makedirs(database_path)
@@ -110,7 +110,30 @@ def init_users_db():
     conn.commit()
     conn.close()
 
-init_users_db()
+    # Create a table to store the refferal data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS referral_codes
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referrer_owner_email TEXT NOT NULL,
+                    referred_code TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store user refferal relationship
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS user_referral_relationship
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referred_code TEXT NOT NULL,
+                    user_email TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+init_central_coordinator_db()
 
 def get_user_db(email):
     db_folder = os.path.join(database_path, email)
@@ -141,7 +164,6 @@ def get_user_db(email):
                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
-
 
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
@@ -230,6 +252,18 @@ def get_user_db(email):
                 graph_data_x_axis TEXT DEFAULT NULL,
                 graph_data_y_axis TEXT DEFAULT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the refferal data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS referrals
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referred_code TEXT NOT NULL,
+                    signup_count INTEGER DEFAULT 0,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 
@@ -1986,7 +2020,88 @@ def save_tab_settings():
 
     return jsonify({"message": "Settings saved successfully"})
 
+@app.route('/acr/referral-codes', methods=['POST'])
+def save_referral_codes():
+    data = request.get_json()
+    email = data.get('email')
+    token = data.get('token')
+    code = data.get('code')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    if not code:
+        return jsonify({"error": "Referral code is required"}), 400
+
+    db_name = os.path.join(database_path, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT 1 FROM referral_codes WHERE referred_code = ?", (code,))
+    row = c.fetchone()
+
+    if row:
+        return jsonify({"error": "Referral code already exists. Please try again..."}), 400
+
+    c.execute("INSERT INTO referral_codes (referrer_owner_email, referred_code) VALUES (?, ?)", (email, code))
+    conn.commit()
+    conn.close()
+
+    user_db_name = get_user_db(email)
+    conn = sqlite3.connect(user_db_name)
+    c = conn.cursor()
+
+    c.execute("INSERT INTO referrals (referred_code) VALUES (?)", (code,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Referral code added successfully"})
+
+@app.route('/acr/referral-codes', methods=['GET'])
+def get_referral_codes():
+    email = request.args.get('email')
+    token = request.args.get('token')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT id, referred_code, signup_count, created_at FROM referrals WHERE referred_code IS NOT NULL ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([{"code": row[1], "signups": row[2], "createdAt": row[3]} for row in rows])
+
+@app.route('/acr/validate_invite_code', methods=['POST'])
+def validate_invite_code():
+    data = request.get_json()
+    code = data.get('inviteCode')
+
+    if not code:
+        return jsonify({"error": "Invite code is required"}), 400
+
+    db_name = os.path.join(database_path, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT 1 FROM referral_codes WHERE referred_code = ? AND is_active = 1", (code,))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"valid": True})
+    else:
+        return jsonify({"valid": False})
 
 if __name__ == '__main__':
-    init_users_db()
+    init_central_coordinator_db()
     app.run(host='0.0.0.0', port=3003, debug=True)

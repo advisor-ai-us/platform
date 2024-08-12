@@ -211,7 +211,7 @@ header p {
 }
 .auth-links {
   text-align: right;
-  margin-bottom: 20px;
+  padding: 10px;
 }
 
 .auth-links .el-button {

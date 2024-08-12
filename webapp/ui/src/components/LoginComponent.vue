@@ -1,4 +1,11 @@
 <template>
+  <div class="advisor-login-signup">
+    <header>
+      <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
+      <h1>Get Started Now</h1>
+      <p>An AI Powered Collaborative Investment Analysis</p>
+    </header>
+
     <el-card class="login-signup-card">
       <el-tabs v-model="activeTab" type="card">
         <el-tab-pane label="Login" name="login">
@@ -34,7 +41,8 @@
       -->
       </el-tabs>
     </el-card>
-  </template>
+  </div>
+</template>
   
   <script>
   import axios from 'axios';
