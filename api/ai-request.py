@@ -605,7 +605,7 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
         # Get assets data from database
         conn2 = sqlite3.connect(db_name)
         c2 = conn2.cursor()
-        c2.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at DESC")
+        c2.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at ASC")
         assetsData = c2.fetchall()
         conn2.close()
 
@@ -961,15 +961,35 @@ def handle_asset_update(userEmail, update_assets):
 
         logging.info(f"Added new asset for user {userEmail}: {asset}")
     elif action == 'edit_asset':
-        c.execute("SELECT id FROM assets WHERE asset = ? AND row_end IS NULL", (asset,))
+        c.execute("SELECT id, parent_id FROM assets WHERE asset = ? AND row_end IS NULL", (asset,))
         row = c.fetchone()
         if row:
             asset_id = row[0]
-            c.execute("UPDATE assets SET qty = ?, price = ?, value = ?, account = ? WHERE id = ?", (qty, price, value, account, asset_id))
+            parent_id = row[1]
+
+            c.execute("UPDATE assets SET row_end = ? WHERE id = ?", (current_time_ms, asset_id))
+            conn.commit()
+
+            c.execute("INSERT INTO assets (parent_id, asset, qty, price, value, account, row_start) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                      (parent_id, asset, qty, price, value, account, current_time_ms))
             conn.commit()
             conn.close()
 
             logging.info(f"Edited asset for user {userEmail}: {asset}")
+        else:
+            logging.error(f"Asset not found for user {userEmail}: {asset}")
+
+    elif action == 'delete_asset':
+        c.execute("SELECT id FROM assets WHERE asset = ? AND row_end IS NULL", (asset,))
+        row = c.fetchone()
+        if row:
+            asset_id = row[0]
+
+            c.execute("UPDATE assets SET row_end = ? WHERE id = ?", (current_time_ms, asset_id))
+            conn.commit()
+            conn.close()
+
+            logging.info(f"Deleted asset for user {userEmail}: {asset}")
         else:
             logging.error(f"Asset not found for user {userEmail}: {asset}")
 
@@ -1465,12 +1485,13 @@ def get_assets():
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at DESC")
+    c.execute("SELECT id, parent_id, asset, qty, price, value, account, row_start, row_end FROM assets ORDER BY created_at ASC")
     rows = c.fetchall()
     conn.close()
 
-    slider_min = rows[-1][7] if rows else 0
+    slider_min = rows[0][7] if rows else 0
     slider_max = int(datetime.datetime.now().timestamp() * 1000)
+
     return jsonify({"rows": [{"id": row[0], "parent_id": row[1], "asset": row[2], "qty": row[3], "price": row[4], "value": row[5], "account": row[6], "row_start": row[7], "row_end": row[8]} for row in rows], "slider_info": {"slider_min": slider_min, "slider_max": slider_max}})
 
 @app.route('/acr/assets/add', methods=['POST']) 

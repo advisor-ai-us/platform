@@ -33,7 +33,10 @@
 <script>
 import axios from 'axios';
 import { Chart, registerables } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 Chart.register(...registerables);
+
+import { format } from 'date-fns';
 
 export default {
     data() {
@@ -42,21 +45,43 @@ export default {
             recommendations: [],
             portfolioChart: null,
             diversificationChart: null,
+            assets: [],
         };
     },
     mounted() {
         this.getGraphData();
+        this.getAssets();
 
         const eventName = "update-analysis-page";
         this.emitter.on(eventName, (data) => {
             this.graphData = data.graphData;
             this.recommendations = data.recommendations;
+            this.assets = data.assets.filter((row) => {
+                return row.row_end === null;
+            });
 
             this.createPortfolioChart();
             this.createDiversificationChart();
         });
     },
     methods: {
+        getAssets() {
+            const apiUrl = this.baseUrlForApiCall + 'assets';
+            axios.get(apiUrl, {
+                params: {
+                    email: localStorage.getItem('email'),
+                    token: localStorage.getItem('token')
+                }
+            }).then((response) => {
+                this.assets = response.data.rows.filter((row) => {
+                    return row.row_end === null;
+                });
+
+                if(this.assets.length > 0) {
+                    this.createPortfolioChart();
+                }
+            });
+        },
         getGraphData() {
             const apiUrl = this.baseUrlForApiCall + 'get_ig_analysis';
             axios.post(apiUrl, {
@@ -67,7 +92,7 @@ export default {
                 this.recommendations = response.data.recommendations;
 
                 if (this.graphData) {
-                    this.createPortfolioChart();
+                    //this.createPortfolioChart();
                     this.createDiversificationChart();
                 }
             });
@@ -91,21 +116,50 @@ export default {
                 this.portfolioChart.destroy();
             }
 
+            const dates = this.assets.map(asset => 
+                format(new Date(asset.row_start), 'MMM d, yyyy HH:mm')
+            );
+            const values = this.assets.map(asset => asset.value);
+            const assetNames = this.assets.map(asset => asset.asset);
+
             this.portfolioChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: this.getGraphValue('line_chart_labels'),
+                    labels: dates,
                     datasets: [{
                         label: 'Portfolio value',
-                        data: this.getGraphValue('line_chart_values'),
+                        data: values,
                         borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
+                        tension: 0.1,
+                        assetNames: assetNames
                     }]
                 },
                 options: {
                     scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Asset Value'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const index = context.dataIndex;
+                                    const assetName = context.dataset.assetNames[index]; // Retrieve asset name using custom property
+                                    const value = context.parsed.y;
+                                    return `${assetName}: ${value}`;
+                                }
+                            }
                         }
                     }
                 }

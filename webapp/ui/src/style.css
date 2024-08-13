@@ -164,7 +164,13 @@ body {
   width: 100px;
   justify-content: left;
 }
-
+header.logo-in-header {
+  padding: 10px 20px;
+  text-align: left;
+}
+header.logo-in-header img {
+  margin: 0;
+}
 /**
  * ==============================================
  * Dot Pulse Loading Animation

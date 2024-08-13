@@ -1,9 +1,9 @@
 <template>
   <div>
-    <header>
+    <header class="logo-in-header">
       <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
-      <h1>Get Started Now</h1>
-      <p>An AI Powered Collaborative Investment Analysis</p>
+      <!-- <h1>Get Started Now</h1>
+      <p>An AI Powered Collaborative Investment Analysis</p> -->
     </header>
   
     <div class="pricing-container">

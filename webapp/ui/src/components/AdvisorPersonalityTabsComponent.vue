@@ -21,6 +21,7 @@
             </el-dropdown-item>
             <el-dropdown-item><ManageOpenAiComponent /></el-dropdown-item>
             <el-dropdown-item><SettingsComponent @settings-updated="updateTabSettings" /></el-dropdown-item>
+            <el-dropdown-item><ShareComponent /></el-dropdown-item>
             <el-dropdown-item command="logout">Logout</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -43,6 +44,7 @@ import ManageOpenAiComponent from './ManageOpenAiComponent.vue';
 import SettingsComponent from './SettingsComponent.vue';
 import StockRecommendations from './StockRecommendations.vue';
 import ReferralManagement from './ReferralManagement.vue';
+import ShareComponent from './ShareComponent.vue';
 
 export default {
   data() {
@@ -76,6 +78,7 @@ export default {
     SettingsComponent,
     StockRecommendations,
     ReferralManagement,
+    ShareComponent
   },
   props: {
     defaultActiveTab: {
