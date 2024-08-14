@@ -36,6 +36,7 @@
           { name: 'Files', label: 'Document Keeper', enabled: false },
           { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: false },
           { name: 'referral', label: 'Referral Management', enabled: false },
+          { name: 'MentalHealth', label: 'Mental Health Advisor', enabled: false },
         ],
       };
     },

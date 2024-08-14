@@ -277,6 +277,13 @@ export default {
             this.emitter.emit(eventName, { reportRow });
           }
         }
+        else if(this.pageName === 'mental-health-advisor') {
+          if(response.data.phq9Data) {
+            const phq9Data = response.data.phq9Data;
+            const eventName = "update-mental-health-page";
+            this.emitter.emit(eventName, { phq9Data });
+          }
+        }
 
         this.scrollToBottom();
       })
@@ -286,13 +293,13 @@ export default {
       });
     },
     scrollToBottom() {
-      this.$nextTick(() => {
-        const chatMessages = this.$el.querySelector('.chat-messages');
-        if (chatMessages) {
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-          console.log('scrollToBottom', chatMessages.scrollHeight);
-        }
-      });
+      // this.$nextTick(() => {
+      //   const chatMessages = this.$el.querySelector('.chat-messages');
+      //   if (chatMessages) {
+      //     chatMessages.scrollTop = chatMessages.scrollHeight;
+      //     console.log('scrollToBottom', chatMessages.scrollHeight);
+      //   }
+      // });
     },
     startVoiceInput() {
       if (!this.recognizing) {

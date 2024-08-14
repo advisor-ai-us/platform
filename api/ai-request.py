@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
-from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION, STOCK_PICKER_SYSTEM_REPORT
+from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION, STOCK_PICKER_SYSTEM_REPORT, MENTAL_HEALTH_ADVISOR_PROMPT
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -368,6 +368,36 @@ def get_system_prompt_with_financial_documents(systemPrompt, email, stock):
 
     return [{"role": "system", "content": systemPrompt}]
 
+def get_system_prompt_with_latest_health_data(systemPrompt, email):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # Check if the table 'phq9' exists
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='phq9';")
+    table_exists = c.fetchone()
+
+    if not table_exists:
+        # Return the default message if the table does not exist
+        health_data = "There are no health data known about the user."
+    else:
+        # Fetch data from the 'phq9' table if it exists
+        c.execute("SELECT question, answer, created_at FROM phq9 ORDER BY created_at DESC")
+        rows = c.fetchall()
+
+        if not rows:
+            health_data = "There are no health data known about the user."
+        else:
+            health_data = "The health data known about the user are: "
+            for question, answer, created_at in rows:
+                health_data += f"Question: {question}, Answer: {answer}, Created At: {created_at}, "
+
+    conn.close()
+
+    systemPrompt = systemPrompt.replace("[HEALTH_DATA]", health_data)
+
+    return [{"role": "system", "content": systemPrompt}]
+
 def save_conversation(email, role, content, display_on_page, text_sent_to_ai_in_the_prompt):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
@@ -458,6 +488,9 @@ def ai_request():
 
     elif display_on_page == 'stock-picker-system-report':
         response = ai_request_stock_picker_system_report(userEmail, message, display_on_page, stock)
+
+    elif display_on_page == 'mental-health-advisor':
+        response = ai_request_mental_health_advisor(userEmail, message, display_on_page)
 
     return response
 
@@ -812,6 +845,102 @@ def ai_request_stock_picker_system_report(userEmail, message, display_on_page, s
             MsgForUser = "An error occurred. Please try again."
 
         return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
+
+def ai_request_mental_health_advisor(userEmail, message, display_on_page):
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(MENTAL_HEALTH_ADVISOR_PROMPT, userEmail)
+    text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+
+    # get openai apikey and model from user database if available else use the default values
+    db_name1 = os.path.join(database_path, "central-coordinator.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {response}")
+        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+
+    if response.choices and response.choices[0].message.content:
+        responseData = ''
+        content = response.choices[0].message.content
+        responseData = extract_json_from_text(content)
+
+        if not responseData:
+            logging.error("JSON part not found or error parsing JSON in the response")
+            responseData = {"MsgForUser": content}
+
+        # Ensure responseData is a dictionary before accessing keys
+        phq9 = []
+        prompt_details = text_sent_to_ai_in_the_prompt
+        if isinstance(responseData, dict):
+            MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+            if MsgForUser != "An error occurred. Please try again.":
+                prompt_details.append({"role": "response", "content": content})
+
+                save_conversation(userEmail, "user", message, display_on_page, None)
+                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+
+                # save MsgForApplication
+                MsgForApplication = responseData.get('MsgForApplication')
+                save_health_status(userEmail, MsgForApplication)
+            else:
+                MsgForUser = "An error occurred. Please try again."
+
+            # Get phq9 data from database
+            db_name = get_user_db(userEmail)
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+
+            # Check if the table 'phq9' exists
+            c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='phq9';")
+            table_exists = c.fetchone()
+
+            if table_exists:
+                # Fetch data from the 'phq9' table if it exists
+                c.execute("SELECT question, answer, score, created_at FROM phq9 ORDER BY created_at DESC")
+                phq9 = c.fetchall()
+
+            conn.close()
+
+        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details), "phq9Data": [{"question": row[0], "answer": row[1], "score": row[2], "createdAt": row[3]} for row in phq9]})
+
+def save_health_status(email, health_status):
+    try:
+        if not health_status or not health_status[0].get('tool_name'):
+            return
+
+        db_name = get_user_db(email)
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+
+        for status in health_status:
+            table_name = status.get('tool_name')
+            c.execute(f'''CREATE TABLE IF NOT EXISTS {table_name}
+                            (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            question TEXT NOT NULL,
+                            answer TEXT NOT NULL,
+                            score INTEGER NOT NULL,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+
+            c.execute(f"INSERT INTO {table_name} (question, answer, score) VALUES (?, ?, ?)", (status.get('question'), status.get('answer'), status.get('score')))
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error saving health status: {e}")
 
 def save_stock_report_data(email, stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis):
     db_name = get_user_db(email)
@@ -2122,6 +2251,34 @@ def validate_invite_code():
         return jsonify({"valid": True})
     else:
         return jsonify({"valid": False})
+
+@app.route('/acr/get_phq9', methods=['GET'])
+def get_phq9():
+    email = request.args.get('email')
+    token = request.args.get('token')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # check if the phq9 table exists
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='phq9'")
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "PHQ9 table not found"}), 404
+
+    c.execute("SELECT question, answer, score, created_at FROM phq9 ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([{"question": row[0], "answer": row[1], "score": row[2], "createdAt": row[3]} for row in rows])
 
 if __name__ == '__main__':
     init_central_coordinator_db()

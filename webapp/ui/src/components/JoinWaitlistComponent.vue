@@ -119,17 +119,17 @@ export default {
             }
           });
 
-          if (error) {
-            this.$message({
-              message: error.message,
-              type: 'error'
-            });
-            return;
-          }
+          // if (error) {
+          //   this.$message({
+          //     message: error.message,
+          //     type: 'error'
+          //   });
+          //   return;
+          // }
 
           axios.post(this.baseUrlForApiCall + 'join_waitlist', {
             ...this.waitlistForm,
-            paymentMethodId: paymentMethod.id
+            //paymentMethodId: paymentMethod.id
           })
             .then((response) => {
               this.$message({

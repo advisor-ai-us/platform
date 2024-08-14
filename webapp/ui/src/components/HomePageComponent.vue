@@ -39,6 +39,10 @@
             <h3>Share and Improve</h3>
             <p>Share your reports with the community, allowing others to benefit from your insights and build upon them. The more data and perspectives we gather, the smarter and more accurate our AI becomes.</p>
           </div>
+          <div class="feature">
+            <h3>Choose Your Advisor</h3>
+            <p>Our platform offers access to a diverse range of AI-powered advisors, each with unique strategies, insights, and specialties. Whether you're seeking personalized financial guidance, tailored investment strategies, or mental health support, you can select the advisor that aligns perfectly with your goals and preferences. Enjoy a holistic approach to your well-being, ensuring that all aspects of your life are supported and empowered by the advisor that suits you best.</p>
+          </div>
         </div>
         <h2>Current AI recommendations:</h2>
         <div class="feature">

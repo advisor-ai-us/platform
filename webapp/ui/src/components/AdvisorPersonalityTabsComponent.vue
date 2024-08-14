@@ -44,6 +44,7 @@ import ManageOpenAiComponent from './ManageOpenAiComponent.vue';
 import SettingsComponent from './SettingsComponent.vue';
 import StockRecommendations from './StockRecommendations.vue';
 import ReferralManagement from './ReferralManagement.vue';
+import MentalHealthComponent from './MentalHealthComponent.vue';
 import ShareComponent from './ShareComponent.vue';
 
 export default {
@@ -62,6 +63,7 @@ export default {
         { name: 'Files', label: 'Document Keeper', enabled: false },
         { name: 'StockRecommendations', label: 'Stock Recommendations', enabled: false },
         { name: 'referral', label: 'Referral Management', enabled: false },
+        { name: 'MentalHealth', label: 'Mental Health Advisor', enabled: false },
       ],
     };
   },
@@ -78,6 +80,7 @@ export default {
     SettingsComponent,
     StockRecommendations,
     ReferralManagement,
+    MentalHealthComponent,
     ShareComponent
   },
   props: {
@@ -107,6 +110,7 @@ export default {
         case 'Files': return DocumentKeeper;
         case 'StockRecommendations': return StockRecommendations;
         case 'referral': return ReferralManagement;
+        case 'MentalHealth': return MentalHealthComponent;
         default: return null;
       }
     },
