@@ -17,7 +17,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
-from system_prompts import PORTFOLIO_PERFORMANCE_PROMPT, DASHBOARD_PROMPT, STOCK_PICKER_DISCUSSION, STOCK_PICKER_SYSTEM_REPORT, MENTAL_HEALTH_ADVISOR_PROMPT
+from system_prompts import (
+    PORTFOLIO_PERFORMANCE_PROMPT,
+    DASHBOARD_PROMPT,
+    STOCK_PICKER_DISCUSSION,
+    STOCK_PICKER_SYSTEM_REPORT,
+    MENTAL_HEALTH_ADVISOR_PROMPT
+)
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
