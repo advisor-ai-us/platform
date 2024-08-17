@@ -27,6 +27,7 @@ from system_prompts import (
 
 from common_utils import get_user_db
 from plugins.mental_health_advisor.utils import get_system_prompt_with_latest_health_data
+from plugins.mental_health_advisor.routes import *
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -553,14 +554,6 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
 
                 save_conversation(userEmail, "user", message, display_on_page, None)
                 save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
-
-                # save recommendation
-                # recommendation = responseData.get('recommendation')
-                # save_stock_recommendations(userEmail, recommendation, stock)
-
-                # # Handle justifications
-                # justification = responseData.get('justification')
-                # save_stock_recommendation_jusitifications(userEmail, justification, stock)
 
                 # save report data
                 recommendation = responseData.get('recommendation')
@@ -2096,34 +2089,6 @@ def validate_invite_code():
         return jsonify({"valid": True})
     else:
         return jsonify({"valid": False})
-
-@app.route('/acr/get_phq9', methods=['GET'])
-def get_phq9():
-    email = request.args.get('email')
-    token = request.args.get('token')
-
-    if not email or not token:
-        return jsonify({"error": "Email and token are required"}), 400
-
-    if not decode_token_and_get_email(token) == email:
-        return jsonify({"error": "Invalid token"}), 401
-
-    db_name = get_user_db(email)
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-
-    # check if the phq9 table exists
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='phq9'")
-    row = c.fetchone()
-
-    if not row:
-        return jsonify({"error": "PHQ9 table not found"}), 404
-
-    c.execute("SELECT question, answer, score, created_at FROM phq9 ORDER BY created_at DESC")
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([{"question": row[0], "answer": row[1], "score": row[2], "createdAt": row[3]} for row in rows])
 
 if __name__ == '__main__':
     init_central_coordinator_db()
