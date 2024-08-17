@@ -25,6 +25,9 @@ from system_prompts import (
     MENTAL_HEALTH_ADVISOR_PROMPT
 )
 
+from common_utils import get_user_db
+from plugins.mental_health_advisor.utils import get_system_prompt_with_latest_health_data
+
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
@@ -141,140 +144,6 @@ def init_central_coordinator_db():
 
 init_central_coordinator_db()
 
-def get_user_db(email):
-    db_folder = os.path.join(database_path, email)
-    if not os.path.exists(db_folder):
-        os.makedirs(db_folder)
-        
-    #props_db_name = os.path.join(db_folder, "memory.db")
-    db_name = os.path.join(db_folder, "all_user_data.db")
-    
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS basic_memory
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 key TEXT NOT NULL,
-                 value TEXT NOT NULL, 
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-    
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS conversation_history
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 role TEXT NOT NULL,
-                 content TEXT NOT NULL,
-                 display_on_page TEXT DEFAULT NULL,
-                 prompt_details TEXT DEFAULT NULL,
-                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS user_settings
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  key TEXT UNIQUE NOT NULL,
-                  value TEXT NOT NULL,
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-
-    # Create a table to store the dashboard data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS dashboard 
-                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  key TEXT NOT NULL, 
-                  value TEXT NOT NULL, 
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-    
-    # Create a table to store the assets data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS assets
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 parent_id INTEGER NOT NULL,
-                 asset TEXT NOT NULL,
-                 qty TEXT NOT NULL,
-                 price TEXT NOT NULL,
-                 value TEXT DEFAULT NULL,
-                 account TEXT DEFAULT NULL,
-                 row_start INTEGER NOT NULL,
-                 row_end INTEGER DEFAULT NULL,
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the account data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS accounts
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 name TEXT NOT NULL,
-                 account_number TEXT NOT NULL,
-                 is_it_active TEXT NOT NULL,
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the graph data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS graph_data
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 key TEXT NOT NULL,
-                 value TEXT NOT NULL,
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the recommendations data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS recommendations
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 recommendation TEXT NOT NULL,
-                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the stock reports data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS stock_reports
-                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                stock_name TEXT NOT NULL,
-                recommendation TEXT DEFAULT NULL,
-                justification TEXT DEFAULT NULL,
-                discount_rate TEXT DEFAULT NULL,
-                net_present_value TEXT DEFAULT NULL,
-                comparison TEXT DEFAULT NULL,
-                graph_data_x_axis TEXT DEFAULT NULL,
-                graph_data_y_axis TEXT DEFAULT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the refferal data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS referrals
-                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    referred_code TEXT NOT NULL,
-                    signup_count INTEGER DEFAULT 0,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    return db_name
-
 def get_system_prompt_with_latest_facts(systemPrompt, email):    
     # replace the placeholder with the latest facts known about the user and the dashboard data. placeholder is [USER_FACTS] and [DASHBOARD_DATA]
     db_name = get_user_db(email)
@@ -371,36 +240,6 @@ def get_system_prompt_with_financial_documents(systemPrompt, email, stock):
 
     systemPrompt = systemPrompt.replace("[STOCK_NAME]", stock)
     systemPrompt = systemPrompt.replace("[FINANCIAL_DOCUMENTS]", financial_documents)
-
-    return [{"role": "system", "content": systemPrompt}]
-
-def get_system_prompt_with_latest_health_data(systemPrompt, email):
-    db_name = get_user_db(email)
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-
-    # Check if the table 'phq9' exists
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='phq9';")
-    table_exists = c.fetchone()
-
-    if not table_exists:
-        # Return the default message if the table does not exist
-        health_data = "There are no health data known about the user."
-    else:
-        # Fetch data from the 'phq9' table if it exists
-        c.execute("SELECT question, answer, created_at FROM phq9 ORDER BY created_at DESC")
-        rows = c.fetchall()
-
-        if not rows:
-            health_data = "There are no health data known about the user."
-        else:
-            health_data = "The health data known about the user are: "
-            for question, answer, created_at in rows:
-                health_data += f"Question: {question}, Answer: {answer}, Created At: {created_at}, "
-
-    conn.close()
-
-    systemPrompt = systemPrompt.replace("[HEALTH_DATA]", health_data)
 
     return [{"role": "system", "content": systemPrompt}]
 
