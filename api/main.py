@@ -244,13 +244,13 @@ def get_system_prompt_with_financial_documents(systemPrompt, email, stock):
 
     return [{"role": "system", "content": systemPrompt}]
 
-def save_conversation(email, role, content, display_on_page, text_sent_to_ai_in_the_prompt):
+def save_conversation(email, role, content, advisorPersonalityName, text_sent_to_ai_in_the_prompt):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
     prompt_details = json.dumps(text_sent_to_ai_in_the_prompt) if role == "assistant" else None
-    c.execute("INSERT INTO conversation_history (role, content, display_on_page, prompt_details) VALUES (?, ?, ?, ?)", (role, content, display_on_page, prompt_details))
+    c.execute("INSERT INTO conversation_history (role, content, advisorPersonalityName, prompt_details) VALUES (?, ?, ?, ?)", (role, content, advisorPersonalityName, prompt_details))
     conn.commit()
     conn.close()
 
@@ -300,14 +300,14 @@ def chat_incoming_message():
         userEmail = request.args.get('userEmail')
         message = request.args.get('message')
         token = request.args.get('token')
-        display_on_page = request.args.get('display_on_page')
+        advisorPersonalityName = request.args.get('advisorPersonalityName')
         stock = request.args.get('stock')
     elif request.method == 'POST':
         data = request.get_json()
         userEmail = data.get('userEmail')
         message = data.get('message')
         token = data.get('token')
-        display_on_page = data.get('display_on_page')
+        advisorPersonalityName = data.get('advisorPersonalityName')
         stock = data.get('stock')
 
     if not userEmail:
@@ -323,24 +323,24 @@ def chat_incoming_message():
         return jsonify({"error": "Invalid token"}), 401
 
     response = None
-    if display_on_page == 'dashboard':
-        response = ai_request_on_dashboard(userEmail, message, display_on_page)
+    if advisorPersonalityName == 'dashboard':
+        response = ai_request_on_dashboard(userEmail, message, advisorPersonalityName)
 
-    elif display_on_page == 'portfolio-performance':
-        response = ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page)
+    elif advisorPersonalityName == 'portfolio-performance':
+        response = ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, advisorPersonalityName)
 
-    elif display_on_page == 'stock-picker-discussion':
-        response = ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock)
+    elif advisorPersonalityName == 'stock-picker-discussion':
+        response = ai_request_stock_picker_discussion(userEmail, message, advisorPersonalityName, stock)
 
-    elif display_on_page == 'stock-picker-system-report':
-        response = ai_request_stock_picker_system_report(userEmail, message, display_on_page, stock)
+    elif advisorPersonalityName == 'stock-picker-system-report':
+        response = ai_request_stock_picker_system_report(userEmail, message, advisorPersonalityName, stock)
 
-    elif display_on_page == 'mental-health-advisor':
-        response = ai_request_mental_health_advisor(userEmail, message, display_on_page)
+    elif advisorPersonalityName == 'mental-health-advisor':
+        response = ai_request_mental_health_advisor(userEmail, message, advisorPersonalityName)
 
     return response
 
-def ai_request_on_dashboard(userEmail, message, display_on_page):
+def ai_request_on_dashboard(userEmail, message, advisorPersonalityName):
   text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_facts(DASHBOARD_PROMPT, userEmail)
   text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
@@ -378,8 +378,8 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
         if MsgForUser != "An error occurred. Please try again.":
             prompt_details.append({"role": "response", "content": content})
 
-            save_conversation(userEmail, "user", message, display_on_page, None)
-            save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+            save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+            save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
 
             memory = responseData.get('memory')
             save_memory(userEmail, memory)
@@ -402,7 +402,7 @@ def ai_request_on_dashboard(userEmail, message, display_on_page):
   else:
     return jsonify({"response": response})
 
-def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
+def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, advisorPersonalityName):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_assets(PORTFOLIO_PERFORMANCE_PROMPT, userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
     
@@ -445,8 +445,8 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
             if MsgForUser != "An error occurred. Please try again.":
                 prompt_details.append({"role": "response", "content": content})
 
-                save_conversation(userEmail, "user", message, display_on_page, None)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
     
                 graph_data = responseData.get('graph_data')
                 save_graph_data(userEmail, graph_data)
@@ -500,7 +500,7 @@ def ai_request_PORTFOLIO_PERFORMANCE(userEmail, message, display_on_page):
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
         
-def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stock):
+def ai_request_stock_picker_discussion(userEmail, message, advisorPersonalityName, stock):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_financial_documents(STOCK_PICKER_DISCUSSION, userEmail, stock)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
@@ -552,8 +552,8 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
             if MsgForUser != "An error occurred. Please try again.":
                 prompt_details.append({"role": "response", "content": content})
 
-                save_conversation(userEmail, "user", message, display_on_page, None)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
 
                 # save report data
                 recommendation = responseData.get('recommendation')
@@ -634,7 +634,7 @@ def ai_request_stock_picker_discussion(userEmail, message, display_on_page, stoc
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
-def ai_request_stock_picker_system_report(userEmail, message, display_on_page, stock):
+def ai_request_stock_picker_system_report(userEmail, message, advisorPersonalityName, stock):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_financial_documents(STOCK_PICKER_SYSTEM_REPORT, userEmail, stock)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
@@ -677,14 +677,14 @@ def ai_request_stock_picker_system_report(userEmail, message, display_on_page, s
             if MsgForUser != "An error occurred. Please try again.":
                 prompt_details.append({"role": "response", "content": content})
 
-                save_conversation(userEmail, "user", message, display_on_page, None)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
         else:
             MsgForUser = "An error occurred. Please try again."
 
         return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
 
-def ai_request_mental_health_advisor(userEmail, message, display_on_page):
+def ai_request_mental_health_advisor(userEmail, message, advisorPersonalityName):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(MENTAL_HEALTH_ADVISOR_PROMPT, userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
@@ -728,8 +728,8 @@ def ai_request_mental_health_advisor(userEmail, message, display_on_page):
             if MsgForUser != "An error occurred. Please try again.":
                 prompt_details.append({"role": "response", "content": content})
 
-                save_conversation(userEmail, "user", message, display_on_page, None)
-                save_conversation(userEmail, "assistant", MsgForUser, display_on_page, prompt_details)
+                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
 
                 # save MsgForApplication
                 MsgForApplication = responseData.get('MsgForApplication')
@@ -1204,12 +1204,12 @@ def get_conversation():
   if request.method == 'GET':
     userEmail = request.args.get('userEmail')
     token = request.args.get('token')
-    display_on_page = request.args.get('display_on_page')
+    advisorPersonalityName = request.args.get('advisorPersonalityName')
   elif request.method == 'POST':
     data = request.get_json()
     userEmail = data.get('userEmail')
     token = data.get('token'),
-    display_on_page = data.get('display_on_page')
+    advisorPersonalityName = data.get('advisorPersonalityName')
 
   if not userEmail:
     return jsonify({"error": "Email parameter is required"}), 400
@@ -1223,7 +1223,7 @@ def get_conversation():
   db_name = get_user_db(userEmail)
   conn = sqlite3.connect(db_name)
   c = conn.cursor()
-  c.execute("SELECT role, content, prompt_details FROM conversation_history WHERE display_on_page = ? ORDER BY timestamp", (display_on_page,))
+  c.execute("SELECT role, content, prompt_details FROM conversation_history WHERE advisorPersonalityName = ? ORDER BY timestamp", (advisorPersonalityName,))
   rows = c.fetchall()
   conn.close()
 
@@ -1976,6 +1976,12 @@ def get_tab_settings():
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
+
+    # Create the user_settings table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS user_settings
+                 (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP)''')
+    conn.commit()
+
     c.execute("SELECT value FROM user_settings WHERE key = ?", ('tab_settings',))
     row = c.fetchone()
     conn.close()
@@ -2001,6 +2007,11 @@ def save_tab_settings():
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
+
+    # Create the user_settings table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS user_settings
+                 (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP)''')
+    
     c.execute("INSERT OR REPLACE INTO user_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
               ('tab_settings', settings))
     conn.commit()

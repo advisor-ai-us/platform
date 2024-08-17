@@ -175,7 +175,7 @@ export default {
         params: {
           userEmail: this.userEmail,
           token: localStorage.getItem('token'),
-          display_on_page: this.advisorPersonalityName
+          advisorPersonalityName: this.advisorPersonalityName
         },
         headers: {
           "Authorization": null,
@@ -238,7 +238,7 @@ export default {
         userEmail: this.userEmail,
         systemPrompt: this.systemPrompt,
         token: localStorage.getItem('token'),
-        display_on_page: this.advisorPersonalityName,
+        advisorPersonalityName: this.advisorPersonalityName,
         stock: this.stock,
       },
       {
