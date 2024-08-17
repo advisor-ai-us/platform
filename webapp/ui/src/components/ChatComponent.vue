@@ -232,7 +232,7 @@ export default {
         role: 'user'
       });
 
-      const apiUrl = this.baseUrlForApiCall + 'ai_request';
+      const apiUrl = this.baseUrlForApiCall + 'chat_incoming_message';
       axios.post(apiUrl, {
         message: message,
         userEmail: this.userEmail,

@@ -294,8 +294,8 @@ def extract_analysis_json_from_text(text):
         logging.error(f"ERROR: JSON decoding failed with error: {e}")
         return None
 
-@app.route('/acr/ai_request', methods=['GET', 'POST'])
-def ai_request():
+@app.route('/acr/chat_incoming_message', methods=['GET', 'POST'])
+def chat_incoming_message():
     if request.method == 'GET':
         userEmail = request.args.get('userEmail')
         message = request.args.get('message')
