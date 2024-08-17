@@ -1,7 +1,7 @@
 from flask import jsonify, request
 import sqlite3
 from common_utils import get_user_db
-from http_endpoint import app, decode_token_and_get_email
+from api.endpoint_http import app, decode_token_and_get_email
 
 @app.route('/acr/get_phq9', methods=['GET'])
 def get_phq9():
