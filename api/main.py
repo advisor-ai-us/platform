@@ -336,7 +336,7 @@ def chat_incoming_message():
         response = ai_request_stock_picker_system_report(userEmail, message, advisorPersonalityName, stock)
 
     elif advisorPersonalityName == 'mental-health-advisor':
-        response = ai_request_mental_health_advisor(userEmail, message, advisorPersonalityName)
+        response = handle_incoming_user_message_to_mental_health_advisor(userEmail, message, advisorPersonalityName)
 
     return response
 
@@ -684,7 +684,7 @@ def ai_request_stock_picker_system_report(userEmail, message, advisorPersonality
 
         return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
 
-def ai_request_mental_health_advisor(userEmail, message, advisorPersonalityName):
+def handle_incoming_user_message_to_mental_health_advisor(userEmail, message, advisorPersonalityName):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(MENTAL_HEALTH_ADVISOR_PROMPT, userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
