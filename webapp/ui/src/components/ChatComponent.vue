@@ -104,7 +104,7 @@ export default {
       type: String,
       required: true,
     },
-    pageName: {
+    advisorPersonalityName: {
       type: String,
       required: true,
     },
@@ -175,7 +175,7 @@ export default {
         params: {
           userEmail: this.userEmail,
           token: localStorage.getItem('token'),
-          display_on_page: this.pageName
+          display_on_page: this.advisorPersonalityName
         },
         headers: {
           "Authorization": null,
@@ -238,7 +238,7 @@ export default {
         userEmail: this.userEmail,
         systemPrompt: this.systemPrompt,
         token: localStorage.getItem('token'),
-        display_on_page: this.pageName,
+        display_on_page: this.advisorPersonalityName,
         stock: this.stock,
       },
       {
@@ -256,12 +256,12 @@ export default {
           role: 'assistant'
         });
 
-        if(this.pageName === 'dashboard') {
+        if(this.advisorPersonalityName === 'dashboard') {
           this.dashboardData = response.data.dashboard;
           const eventName = "update-dashboard-boxes";
           this.emitter.emit(eventName, this.dashboardData);
         } 
-        else if(this.pageName === 'portfolio-performance') {
+        else if(this.advisorPersonalityName === 'portfolio-performance') {
           const graphData = response.data.graph_data;
           const recommendations = response.data.recommendations;
           const assets = response.data.assets;
@@ -269,7 +269,7 @@ export default {
           const eventName = "update-analysis-page";
           this.emitter.emit(eventName, { graphData, recommendations, assets });
         }
-        else if(this.pageName === 'stock-picker-discussion') {
+        else if(this.advisorPersonalityName === 'stock-picker-discussion') {
           if(response.data.reportRow) {
             const reportRow = response.data.reportRow;
 
@@ -277,7 +277,7 @@ export default {
             this.emitter.emit(eventName, { reportRow });
           }
         }
-        else if(this.pageName === 'mental-health-advisor') {
+        else if(this.advisorPersonalityName === 'mental-health-advisor') {
           if(response.data.phq9Data) {
             const phq9Data = response.data.phq9Data;
             const eventName = "update-mental-health-page";

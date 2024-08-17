@@ -62,7 +62,7 @@
         </el-col>
       </el-row>
     </div>
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" v-if="!isPageDisabled" />
+    <ChatComponent :systemPrompt="systemPrompt" :advisorPersonalityName="advisorPersonalityName" :stock="stock" v-if="!isPageDisabled" />
   </div>
 </template>
 
@@ -87,7 +87,7 @@ export default {
 
       // for chat component
       systemPrompt: '',
-      pageName: 'stock-picker-system-report',
+      advisorPersonalityName: 'stock-picker-system-report',
     };
   },
   created() {

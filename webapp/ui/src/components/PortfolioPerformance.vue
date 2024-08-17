@@ -17,7 +17,7 @@
         </div>
       </el-tab-pane>
     </el-tabs>
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" />
+    <ChatComponent :systemPrompt="systemPrompt" :advisorPersonalityName="advisorPersonalityName" />
   </div>
 </template>
 
@@ -32,7 +32,7 @@ export default {
     return {
       activeTab: 'analysis',
       systemPrompt: '',
-      pageName: 'portfolio-performance',
+      advisorPersonalityName: 'portfolio-performance',
     };
   },
   components: {

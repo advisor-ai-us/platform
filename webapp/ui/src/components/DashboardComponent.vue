@@ -7,7 +7,7 @@ export default {
     return {
       dashboardData: [],
       systemPrompt: '',
-      pageName: 'dashboard',
+      advisorPersonalityName: 'dashboard',
     };
   },
   components: {
@@ -90,7 +90,7 @@ export default {
               </div>
             </div>
           </div>
-          <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" />
+          <ChatComponent :systemPrompt="systemPrompt" :advisorPersonalityName="advisorPersonalityName" />
         </div>
       </el-main>
     </el-container>

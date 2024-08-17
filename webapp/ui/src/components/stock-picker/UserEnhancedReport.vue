@@ -110,7 +110,7 @@
         </div>
       </el-card>
     </div>
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" :stock="stock" v-if="!isPageDisabled" />
+    <ChatComponent :systemPrompt="systemPrompt" :advisorPersonalityName="advisorPersonalityName" :stock="stock" v-if="!isPageDisabled" />
   </div>
 </template>
 
@@ -144,7 +144,7 @@ export default {
 
       // for chat component
       systemPrompt: '',
-      pageName: 'stock-picker-discussion',
+      advisorPersonalityName: 'stock-picker-discussion',
       projectedProfitChart: null,
     };
   },

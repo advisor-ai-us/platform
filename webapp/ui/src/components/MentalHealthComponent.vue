@@ -7,7 +7,7 @@
       </el-card>
     </div>
 
-    <ChatComponent :systemPrompt="systemPrompt" :pageName="pageName" />
+    <ChatComponent :systemPrompt="systemPrompt" :advisorPersonalityName="advisorPersonalityName" />
 </template>
 
 <script>
@@ -21,7 +21,7 @@ export default {
     data() {
         return {
             systemPrompt: '',
-            pageName: 'mental-health-advisor',
+            advisorPersonalityName: 'mental-health-advisor',
             phq9Data: [],
             phq9Chart: null,
         };
