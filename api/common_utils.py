@@ -4,6 +4,8 @@ import sqlite3, os, json, re
 from openai import OpenAI
 from flask import jsonify
 
+from config import *
+
 def get_response_from_openai(api_key, model, messages):
     client = OpenAI(api_key=api_key)
     
@@ -43,8 +45,7 @@ def save_conversation(email, role, content, advisorPersonalityName, text_sent_to
 
 
 def get_user_db(email):
-    database_path = 'data/dev/' if os.getenv('SERVER_ENV') == 'development' else 'data/prod/'
-    db_folder = os.path.join(database_path, email)
+    db_folder = os.path.join(DATABASE_PATH, email)
     if not os.path.exists(db_folder):
         os.makedirs(db_folder)
         

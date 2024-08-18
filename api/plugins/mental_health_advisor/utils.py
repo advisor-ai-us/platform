@@ -9,10 +9,8 @@ def handle_incoming_user_message_to_mental_health_advisor(userEmail, message):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
-    database_path = '../data/dev/'
-
     # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(database_path, "central-coordinator.db")
+    db_name1 = os.path.join(DATABASE_PATH, "central-coordinator.db")
     conn1 = sqlite3.connect(db_name1)
     c1 = conn1.cursor()
     c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
