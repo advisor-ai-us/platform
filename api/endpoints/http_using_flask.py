@@ -32,8 +32,7 @@ from system_prompts import (
     PORTFOLIO_PERFORMANCE_PROMPT,
     DASHBOARD_PROMPT,
     STOCK_PICKER_DISCUSSION,
-    STOCK_PICKER_SYSTEM_REPORT,
-    MENTAL_HEALTH_ADVISOR_PROMPT
+    STOCK_PICKER_SYSTEM_REPORT
 )
 
 
@@ -693,7 +692,7 @@ def ai_request_stock_picker_system_report(userEmail, message, advisorPersonality
         return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
 
 def handle_incoming_user_message_to_mental_health_advisor(userEmail, message, advisorPersonalityName):
-    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(MENTAL_HEALTH_ADVISOR_PROMPT, userEmail)
+    text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
     # get openai apikey and model from user database if available else use the default values

@@ -1,7 +1,8 @@
 import sqlite3
 from common_utils import get_user_db
+from .system_prompt import MENTAL_HEALTH_ADVISOR_PROMPT
 
-def get_system_prompt_with_latest_health_data(systemPrompt, email):
+def get_system_prompt_with_latest_health_data(email):
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
@@ -27,6 +28,7 @@ def get_system_prompt_with_latest_health_data(systemPrompt, email):
 
     conn.close()
 
-    systemPrompt = systemPrompt.replace("[HEALTH_DATA]", health_data)
+    # Use the imported MENTAL_HEALTH_ADVISOR_PROMPT
+    updated_prompt = MENTAL_HEALTH_ADVISOR_PROMPT.replace("[HEALTH_DATA]", health_data)
 
-    return [{"role": "system", "content": systemPrompt}]
+    return [{"role": "system", "content": updated_prompt}]
