@@ -1,5 +1,46 @@
 import os
 import sqlite3
+import sqlite3, os, json, re
+from openai import OpenAI
+from flask import jsonify
+
+def get_response_from_openai(api_key, model, messages):
+    client = OpenAI(api_key=api_key)
+    
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages
+        )
+        return response
+    except Exception as e:
+        return str(e)
+
+
+def extract_json_from_text(text):
+    try:
+        # Use regex to find the JSON object within the text
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            json_part = match.group(0)
+            return json.loads(json_part)
+        else:
+            print("ERROR: JSON part not found in the response")
+            return None
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+
+def save_conversation(email, role, content, advisorPersonalityName, text_sent_to_ai_in_the_prompt):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    prompt_details = json.dumps(text_sent_to_ai_in_the_prompt) if role == "assistant" else None
+    c.execute("INSERT INTO conversation_history (role, content, advisorPersonalityName, prompt_details) VALUES (?, ?, ?, ?)", (role, content, advisorPersonalityName, prompt_details))
+    conn.commit()
+    conn.close()
+
 
 def get_user_db(email):
     database_path = 'data/dev/' if os.getenv('FLASK_ENV') == 'development' else 'data/prod/'
