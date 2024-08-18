@@ -4,6 +4,7 @@ import openai
 from openai import OpenAI
 from openai import AzureOpenAI
 import os
+import sys
 import re
 import hmac
 import hashlib
@@ -17,6 +18,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
 
+# Add the parent directory to the Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+from common_utils import get_user_db
+from plugins.mental_health_advisor.utils import get_system_prompt_with_latest_health_data
+from plugins.mental_health_advisor.routes import *
+
+
 from system_prompts import (
     PORTFOLIO_PERFORMANCE_PROMPT,
     DASHBOARD_PROMPT,
@@ -25,9 +36,6 @@ from system_prompts import (
     MENTAL_HEALTH_ADVISOR_PROMPT
 )
 
-from common_utils import get_user_db
-from plugins.mental_health_advisor.utils import get_system_prompt_with_latest_health_data
-from plugins.mental_health_advisor.routes import *
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -45,10 +53,10 @@ OPENAI_AZURE_API_ENGINE = os.getenv('OPENAI_AZURE_API_ENGINE')
 
 # Enable CORS only in development environment
 if os.getenv('FLASK_ENV') == 'development':
-    database_path = 'databases/dev/'
+    database_path = '../data/dev/'
     CORS(app)
 else:
-    database_path = 'databases/prod/'
+    database_path = '../data/prod/'
 
 def md5_hash(text):
     return hashlib.md5(text.encode()).hexdigest()

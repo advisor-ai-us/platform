@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 def get_user_db(email):
-    database_path = 'databases/dev/' if os.getenv('FLASK_ENV') == 'development' else 'databases/prod/'
+    database_path = 'data/dev/' if os.getenv('FLASK_ENV') == 'development' else 'data/prod/'
     db_folder = os.path.join(database_path, email)
     if not os.path.exists(db_folder):
         os.makedirs(db_folder)

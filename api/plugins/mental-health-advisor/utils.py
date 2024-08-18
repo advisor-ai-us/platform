@@ -1,5 +1,5 @@
 import sqlite3
-from endpoint_http import get_user_db  # Assuming this function is in ai_request.py
+from endpoints.http import get_user_db  # Assuming this function is in ai_request.py
 
 def get_system_prompt_with_latest_health_data(systemPrompt, email):
     db_name = get_user_db(email)

@@ -53,7 +53,7 @@
 
 > set -x FLASK_ENV development
 1. This will enable CORS on localhost
-2. Sets the database path to 'databases/dev/'
+2. Sets the database path to 'data/dev/'
 
 > pip3 install -r requirements.txt
 

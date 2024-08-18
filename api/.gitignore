@@ -1,7 +1,6 @@
 python3-venv
 *.pyc
-databases/dev/*
-databases/prod/*
+data/*
 .env
 venv
 pdf_uploads/*

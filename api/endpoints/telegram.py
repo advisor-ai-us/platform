@@ -11,6 +11,7 @@ async def start(update: Update, context: CallbackContext) -> None:
 
 # Function to handle messages
 async def handle_message(update: Update, context: CallbackContext) -> None:
+    print(update)
     user_message = update.message.text
     ai_response = ai_chat_logic(user_message)  # Replace with your AI chat logic function
     await update.message.reply_text(ai_response)
