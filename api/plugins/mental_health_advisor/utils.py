@@ -4,7 +4,7 @@ from flask import jsonify
 from common_utils import *
 from .system_prompt import MENTAL_HEALTH_ADVISOR_PROMPT
 
-def handle_incoming_user_message_to_mental_health_advisor(userEmail, message, advisorPersonalityName):
+def handle_incoming_user_message_to_mental_health_advisor(userEmail, message):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(userEmail)
     text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
 
@@ -50,8 +50,8 @@ def handle_incoming_user_message_to_mental_health_advisor(userEmail, message, ad
             if MsgForUser != "An error occurred. Please try again.":
                 prompt_details.append({"role": "response", "content": content})
 
-                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
-                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
+                save_conversation(userEmail, "user", message, 'mental-health-advisor', None)
+                save_conversation(userEmail, "assistant", MsgForUser, 'mental-health-advisor', prompt_details)
 
                 # save MsgForApplication
                 MsgForApplication = responseData.get('MsgForApplication')
@@ -75,7 +75,7 @@ def handle_incoming_user_message_to_mental_health_advisor(userEmail, message, ad
 
             conn.close()
 
-        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details), "phq9Data": [{"question": row[0], "answer": row[1], "score": row[2], "createdAt": row[3]} for row in phq9]})
+        return {"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details), "phq9Data": [{"question": row[0], "answer": row[1], "score": row[2], "createdAt": row[3]} for row in phq9]}
 
 def save_health_status(email, health_status):
     try:

@@ -308,7 +308,7 @@ def chat_incoming_message():
         response = ai_request_stock_picker_system_report(userEmail, message, advisorPersonalityName, stock)
 
     elif advisorPersonalityName == 'mental-health-advisor':
-        response = handle_incoming_user_message_to_mental_health_advisor(userEmail, message, advisorPersonalityName)
+        response = handle_incoming_user_message_to_mental_health_advisor(userEmail, message)
 
     return response
 

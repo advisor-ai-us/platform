@@ -1,7 +1,14 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from telegram import Update
 from dotenv import load_dotenv
-import os
+import os, sys
+
+# Add the parent directory to the Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+from plugins.mental_health_advisor.utils import handle_incoming_user_message_to_mental_health_advisor
 
 load_dotenv()  # This loads the variables from .env
 
@@ -18,7 +25,9 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
 
 # Your AI chat logic
 def ai_chat_logic(user_message):
-    return f"You said: {user_message}"
+    userEmail = "kedia.vikas@gmail.com"
+    response = handle_incoming_user_message_to_mental_health_advisor(userEmail, user_message)
+    return f"{response['response']}"
 
 def main():
     # Replace 'YOUR_TOKEN' with your bot token from BotFather
