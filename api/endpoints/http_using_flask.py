@@ -51,7 +51,7 @@ OPENAI_AZURE_API_KEY = os.getenv('OPENAI_AZURE_API_KEY')
 OPENAI_AZURE_API_ENGINE = os.getenv('OPENAI_AZURE_API_ENGINE')
 
 # Enable CORS only in development environment
-if os.getenv('FLASK_ENV') == 'development':
+if os.getenv('SERVER_ENV') == 'development':
     database_path = '../data/dev/'
     CORS(app)
 else:

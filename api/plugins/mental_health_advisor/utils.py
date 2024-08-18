@@ -2,6 +2,7 @@ import sqlite3, os, json, re
 from openai import OpenAI
 from flask import jsonify
 from common_utils import *
+from config import *
 from .system_prompt import MENTAL_HEALTH_ADVISOR_PROMPT
 
 def handle_incoming_user_message_to_mental_health_advisor(userEmail, message):

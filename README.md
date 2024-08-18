@@ -51,7 +51,7 @@
 > which pip3
 /Users/vk/code/platform/api/python3-venv/bin/pip3
 
-> set -x FLASK_ENV development
+> set -x SERVER_ENV development
 1. This will enable CORS on localhost
 2. Sets the database path to 'data/dev/'
 
