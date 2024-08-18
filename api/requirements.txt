@@ -5,3 +5,4 @@ flask-cors
 PyMuPDF
 frontend
 tools
+python-telegram-bot
