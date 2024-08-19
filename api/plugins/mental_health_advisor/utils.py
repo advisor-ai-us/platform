@@ -1,4 +1,4 @@
-import sqlite3, os, json, re
+import sqlite3, os, json, re, logging
 from openai import OpenAI
 from flask import jsonify
 from common_utils import *
