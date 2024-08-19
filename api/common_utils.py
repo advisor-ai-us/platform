@@ -101,6 +101,18 @@ def save_conversation(email, role, content, advisorPersonalityName, text_sent_to
     conn.close()
 
 def handle_allow_user_to_free_chat(email):
+    central_coordinator_db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(central_coordinator_db_name)
+    c = conn.cursor()
+    # check if the user is in the payment intents table with status = 'succeeded'
+    c.execute("SELECT COUNT(*) FROM payment_intents WHERE user_email = ? AND status = 'succeeded'", (email,))
+    payment_intent_count = c.fetchone()[0]
+    conn.close()
+
+    # if row found in payment intents table, return True
+    if payment_intent_count > 0:
+        return True
+    
     db_name = get_user_db(email)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
