@@ -23,8 +23,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
-from common_utils import *
 from config import *
+from common_utils import *
 from plugins.mental_health_advisor.utils import handle_incoming_user_message_to_mental_health_advisor
 from plugins.mental_health_advisor.routes import *
 
@@ -90,51 +90,6 @@ def get_response_from_ai_gpt_4_32k(messages):
         responseFromAi = str(e)
 
     return responseFromAi
-
-# Create users database if it doesn't exist
-def init_central_coordinator_db():
-    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
-    if not os.path.exists(DATABASE_PATH):
-        os.makedirs(DATABASE_PATH)
-    
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  email TEXT UNIQUE NOT NULL,
-                  full_name TEXT NOT NULL,
-                  password TEXT NOT NULL,
-                  openai_api_key TEXT DEFAULT NULL,
-                  openai_model TEXT DEFAULT NULL,
-                  about_yourself TEXT,
-                  biggest_problem TEXT,
-                  is_waitlist BOOLEAN DEFAULT FALSE,
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store the refferal data
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS referral_codes
-                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    referrer_owner_email TEXT NOT NULL,
-                    referred_code TEXT NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-    # Create a table to store user refferal relationship
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS user_referral_relationship
-                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    referred_code TEXT NOT NULL,
-                    user_email TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
 
 init_central_coordinator_db()
 

@@ -1,10 +1,55 @@
-import os
-import sqlite3
 import sqlite3, os, json, re
 from openai import OpenAI
 from flask import jsonify
 
 from config import *
+
+# Create users database if it doesn't exist
+def init_central_coordinator_db():
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    if not os.path.exists(DATABASE_PATH):
+        os.makedirs(DATABASE_PATH)
+    
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  email TEXT UNIQUE NOT NULL,
+                  telegram_username TEXT UNIQUE,
+                  full_name TEXT NOT NULL,
+                  password TEXT NOT NULL,
+                  openai_api_key TEXT DEFAULT NULL,
+                  openai_model TEXT DEFAULT NULL,
+                  about_yourself TEXT,
+                  biggest_problem TEXT,
+                  is_waitlist BOOLEAN DEFAULT FALSE,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the refferal data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS referral_codes
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referrer_owner_email TEXT NOT NULL,
+                    referred_code TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store user refferal relationship
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS user_referral_relationship
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referred_code TEXT NOT NULL,
+                    user_email TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
 
 def get_response_from_openai(api_key, model, messages):
     client = OpenAI(api_key=api_key)
