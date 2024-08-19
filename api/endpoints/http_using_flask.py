@@ -17,6 +17,7 @@ import logging
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
+import stripe
 
 # Add the parent directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,8 @@ OPENAI_AZURE_API_VERSION = os.getenv('OPENAI_AZURE_API_VERSION')
 OPENAI_AZURE_API_BASE_URL = os.getenv('OPENAI_AZURE_API_BASE_URL')
 OPENAI_AZURE_API_KEY = os.getenv('OPENAI_AZURE_API_KEY')
 OPENAI_AZURE_API_ENGINE = os.getenv('OPENAI_AZURE_API_ENGINE')
+
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 # Enable CORS only in development environment
 if os.getenv('SERVER_ENV') == 'development':
@@ -1121,22 +1124,78 @@ def join_waitlist():
     if not full_name or not email or not about_yourself or not biggest_problem:
         return jsonify({"error": "All fields are required"}), 400
 
-    if invite_code and invite_code != 'jaikalima':
-        return jsonify({"error": "Invalid invite code"}), 400
-
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    
+    # Open the database connection for initial checks
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    # Check if the invite code is not empty and invite code='jaikalima' then set is_waitlist to False else True
+    # Check if the invite code is valid and set waitlist status
     if invite_code and invite_code == 'jaikalima':
         is_waitlist = False
     else:
         is_waitlist = True
 
+    # Handle Stripe payment
+    paymentMethodId = data.get('paymentMethodId')
+
+    if paymentMethodId:
+        try:
+            # Create a PaymentIntent with Stripe
+            intent = stripe.PaymentIntent.create(
+                amount=5000,  # $50.00
+                currency='usd',
+                payment_method=paymentMethodId,
+                confirm=True,
+                automatic_payment_methods={
+                    'enabled': True,
+                    'allow_redirects': 'never'
+                },
+                metadata={'waitlist': 'join'}
+            )
+
+            # Check if the payment was successful
+            if intent.status == 'succeeded':
+                is_waitlist = False
+
+                # Save the payment intent to the database
+                conn.execute("INSERT INTO payment_intents (payment_intent_id, user_email, status, client_secret) VALUES (?, ?, ?, ?)", (intent.id, email, intent.status, intent.client_secret))
+                conn.commit()
+
+                # Save the user referral relationship
+                conn.execute("INSERT INTO user_referral_relationship (user_email, referred_code) VALUES (?, ?)", (email, invite_code))
+                conn.commit()
+
+                # Increment signup_count in referral_codes for the referrer
+                c.execute("SELECT referrer_owner_email FROM referral_codes WHERE referred_code = ?", (invite_code,))
+                row = c.fetchone()
+                
+                if row:
+                    referrer_owner_email = row[0]
+                    referrer_db_name = get_user_db(referrer_owner_email)
+                    
+                    referrer_conn = sqlite3.connect(referrer_db_name)
+                    referrer_cursor = referrer_conn.cursor()
+                    referrer_cursor.execute("UPDATE referrals SET signup_count = signup_count + 1 WHERE referred_code = ?", (invite_code,))
+                    referrer_conn.commit()
+                    referrer_conn.close()
+            else:
+                is_waitlist = True
+        except Exception as e:
+            conn.close()
+            return jsonify({"error": "Payment failed", "message": str(e)}), 400
+
+    # Close the initial connection before creating a new one for user insertion
+    conn.close()
+
+    # Open a new connection for inserting user data
     try:
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
         hashed_password = generate_password_hash(password)
-        c.execute("INSERT INTO users (email, full_name, password, about_yourself, biggest_problem, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", (email, full_name, hashed_password, about_yourself, biggest_problem, is_waitlist))
+        
+        c.execute("INSERT INTO users (email, full_name, password, about_yourself, biggest_problem, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", 
+                  (email, full_name, hashed_password, about_yourself, biggest_problem, is_waitlist))
         conn.commit()
     except sqlite3.IntegrityError:
         return jsonify({"error": "Email already exists"}), 400

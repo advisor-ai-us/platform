@@ -99,7 +99,7 @@ export default {
   async mounted() {
 
     setTimeout(async() => {
-      this.stripe = await loadStripe('pk_test_51PmwLHRu672bSSgB1fn413d8zIpQaJXQuoNYDf0F1odsXdKzUxEloAw0E1r67I7oe7khbujftmgJaSOF7thhYIo900SGo2gZbM'); // Replace with your Stripe publishable key
+      this.stripe = await loadStripe(import.meta.env.VITE_STRIPE_API_KEY);
       const elements = this.stripe.elements();
       this.cardElement = elements.create('card');
       this.cardElement.mount('#card-element');
@@ -109,27 +109,32 @@ export default {
     handleJoinWaitlist() {
       this.$refs.waitlistForm.validate(async (valid) => {
         if (valid) {
-          // Create a payment method and handle the payment
-          const { error, paymentMethod } = await this.stripe.createPaymentMethod({
-            type: 'card',
-            card: this.cardElement,
-            billing_details: {
-              name: this.waitlistForm.fullName,
-              email: this.waitlistForm.email
-            }
-          });
+          let paymentMethodId = null;
 
-          // if (error) {
-          //   this.$message({
-          //     message: error.message,
-          //     type: 'error'
-          //   });
-          //   return;
-          // }
+          if (this.inviteCodeValid === 'valid') {
+            // Create a payment method and handle the payment
+            const { error, paymentMethod } = await this.stripe.createPaymentMethod({
+              type: 'card',
+              card: this.cardElement,
+              billing_details: {
+                name: this.waitlistForm.fullName,
+                email: this.waitlistForm.email
+              }
+            });
+
+            if (error) {
+              this.$message({
+                message: error.message,
+                type: 'error'
+              });
+              return;
+            }
+            paymentMethodId = paymentMethod.id;
+          }
 
           axios.post(this.baseUrlForApiCall + 'join_waitlist', {
             ...this.waitlistForm,
-            //paymentMethodId: paymentMethod.id
+            paymentMethodId: paymentMethodId
           })
             .then((response) => {
               this.$message({

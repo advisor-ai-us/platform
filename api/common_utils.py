@@ -50,6 +50,18 @@ def init_central_coordinator_db():
     conn.commit()
     conn.close()
 
+    # Create a table to store payment intents
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS payment_intents
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    payment_intent_id TEXT NOT NULL,
+                    user_email TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    client_secret TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
 
 def get_response_from_openai(api_key, model, messages):
     client = OpenAI(api_key=api_key)
@@ -88,6 +100,25 @@ def save_conversation(email, role, content, advisorPersonalityName, text_sent_to
     conn.commit()
     conn.close()
 
+def handle_allow_user_to_free_chat(email):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    
+    # Fetch the count of user messages
+    c.execute("SELECT COUNT(*) FROM conversation_history WHERE role = 'user'")
+    user_message_count = c.fetchone()[0]
+    
+    conn.close()
+
+    # Ensure that user_message_count is an integer
+    user_message_count = int(user_message_count)
+
+    # Compare the counts
+    if user_message_count >= int(FREE_CHAT_COUNT):
+        return False
+    else:
+        return True
 
 def get_user_db(email):
     db_folder = os.path.join(DATABASE_PATH, email)

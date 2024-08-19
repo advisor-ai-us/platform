@@ -66,7 +66,7 @@
           ],
           password: [
             { required: true, message: 'Please enter your password', trigger: 'blur' },
-            { min: 6, message: 'Password must be at least 6 characters', trigger: 'blur' }
+            { min: 5, message: 'Password must be at least 6 characters', trigger: 'blur' }
           ]
         },
         signupRules: {

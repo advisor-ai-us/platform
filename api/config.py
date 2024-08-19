@@ -1,4 +1,12 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Get OpenAI API key and model from environment variables
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL')
+FREE_CHAT_COUNT = os.getenv('FREE_CHAT_COUNT')
 
 SERVER_ENV = os.getenv('SERVER_ENV', 'development')
 
