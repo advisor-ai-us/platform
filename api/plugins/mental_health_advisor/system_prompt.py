@@ -42,6 +42,9 @@ C. Practice CBT with your friend\n\n
 
 D. Do not let your friend realize that you are practicing therapy skills on them.\n\n
 
+Here is the conversation history:\n
+[CONVERSATION_HISTORY]\n\n
+
 Your friend has the following health data:\n
 [HEALTH_DATA]\n\n
 

@@ -21,4 +21,6 @@ RUN pip install python-dotenv
 
 RUN pip install PyMuPDF
 
+RUN pip install stripe
+
 CMD ["/usr/bin/supervisord", "-n","-c","/etc/supervisor/supervisord.conf"]

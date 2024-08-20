@@ -7,6 +7,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL')
 FREE_CHAT_COUNT = os.getenv('FREE_CHAT_COUNT')
+TAVUS_API_KEY = os.getenv('TAVUS_API_KEY')
 
 SERVER_ENV = os.getenv('SERVER_ENV', 'development')
 

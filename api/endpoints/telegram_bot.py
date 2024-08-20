@@ -1,7 +1,7 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram import Update
+from telegram import Update, InputFile
 from dotenv import load_dotenv
-import os, sys, sqlite3
+import os, sys, sqlite3, requests, asyncio
 
 # Add the parent directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,9 +15,62 @@ from werkzeug.security import generate_password_hash
 
 load_dotenv()  # This loads the variables from .env
 
+TAVUS_API_KEY = os.getenv('TAVUS_API_KEY')
+TAVUS_API_URL = "https://tavusapi.com/v2/videos"
+
 # Function to start the bot
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text('Hello! I am your AI bot.')
+
+# Function to generate video
+async def generate_video(text_message, video_template_id, recipient_email):
+    # API request headers
+    headers = {
+        "x-api-key": TAVUS_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    # Request body
+    payload = {
+        "background_url": "https://www.advisorai.us",
+        "replica_id": video_template_id,
+        "script": text_message,
+        "video_name": recipient_email
+    }
+
+    # Make a POST request to Tavus API
+    response = requests.request("POST", TAVUS_API_URL, json=payload, headers=headers)
+    if response.status_code == 200:
+        return response.json().get("video_id")
+    else:
+        return str(response.json())
+
+async def get_video_link(video_id):
+    url = f"https://tavusapi.com/v2/videos/{video_id}"
+    headers = {"x-api-key": TAVUS_API_KEY}
+    
+    max_retries = 20  # Set a limit for retries (10 retries = 50 seconds total wait time)
+    retry_delay = 30  # Wait 5 seconds between retries
+    
+    for _ in range(max_retries):
+        response = requests.request("GET", url, headers=headers)
+        result = response.json()
+        
+        # Check if the video is ready (download_url or stream_url should be available)
+        if result.get("download_url"):
+            return result
+        
+        # Check the status and log progress
+        status = result.get("status")
+        if status in ["queued", "processing"]:
+            print(f"Video is still processing: {result.get('generation_progress')}% complete.")
+        else:
+            print(f"Unexpected status: {status}")
+        
+        # Wait before the next check
+        await asyncio.sleep(retry_delay)
+    
+    return None  # Return None if video is still not ready after max retries
 
 # Function to handle messages
 async def handle_message(update: Update, context: CallbackContext) -> None:
@@ -40,7 +93,18 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         if handle_allow_user_to_free_chat(userEmail):
             user_message = update.message.text
             ai_response = ai_chat_logic(user_message, userEmail)
-            await update.message.reply_text(ai_response)
+
+            try:
+                video_id = await generate_video(ai_response, "r79e1c033f", userEmail)
+                video_link_data = await get_video_link(video_id)
+
+                if video_link_data:
+                    video_link = video_link_data.get("download_url")
+                    await update.message.reply_video(video_link)
+                else:
+                    await update.message.reply_text(ai_response)
+            except Exception as e:
+                await update.message.reply_text(ai_response)
         else:
             await update.message.reply_text("You have reached your free chat limit. Please pay using stripe to continue.")
     else:

@@ -127,9 +127,15 @@ def get_system_prompt_with_latest_health_data(email):
             for question, answer, created_at in rows:
                 health_data += f"Question: {question}, Answer: {answer}, Created At: {created_at}, "
 
+    # CONVERSATION_HISTORY
+    c.execute("SELECT role, content FROM conversation_history WHERE advisorPersonalityName = 'mental-health-advisor' ORDER BY timestamp ASC")
+    conversation_history = c.fetchall()
+    conversation_history_str = "\n".join([f"{row[0]}: {row[1]}" for row in conversation_history])
+
     conn.close()
 
     # Use the imported MENTAL_HEALTH_ADVISOR_PROMPT
     updated_prompt = MENTAL_HEALTH_ADVISOR_PROMPT.replace("[HEALTH_DATA]", health_data)
+    updated_prompt = updated_prompt.replace("[CONVERSATION_HISTORY]", conversation_history_str)
 
     return [{"role": "system", "content": updated_prompt}]
