@@ -4,3 +4,4 @@ data/*
 .env
 venv
 pdf_uploads/*
+mp3_temp/*

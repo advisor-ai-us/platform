@@ -23,4 +23,6 @@ RUN pip install PyMuPDF
 
 RUN pip install stripe
 
+RUN pip install elevenlabs
+
 CMD ["/usr/bin/supervisord", "-n","-c","/etc/supervisor/supervisord.conf"]
