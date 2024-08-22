@@ -136,10 +136,6 @@ async def button(update: Update, context: CallbackContext) -> None:
     context.user_data['response_type'] = query.data
     await query.edit_message_text(text=f"You've selected {query.data} responses.")
 
-    # After the user selects a response type, show the "Change Response Type" button using ReplyKeyboardMarkup
-    keyboard = [['Change Response Type']]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await query.message.reply_text("If you want to change the response type, click the button below.", reply_markup=reply_markup)
 
 # Function to handle messages
 async def handle_message(update: Update, context: CallbackContext) -> None:
