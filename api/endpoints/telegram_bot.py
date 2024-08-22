@@ -86,7 +86,9 @@ async def get_video_link(video_id):
 def text_to_speech_file(text: str) -> str:
     # Calling the text_to_speech conversion API with detailed parameters
     response = client.text_to_speech.convert(
-        voice_id="pNInz6obpgDQGcFmaJgB", # Adam pre-made voice
+        # female voice XrExE9yKIg1WjnnlVkGX
+        # male voice pNInz6obpgDQGcFmaJgB
+        voice_id="XrExE9yKIg1WjnnlVkGX",
         output_format="mp3_22050_32",
         text=text,
         model_id="eleven_turbo_v2_5", # use the turbo model for low latency
@@ -181,7 +183,9 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                     await update.message.reply_voice(voice=audio)
             elif response_type == 'video':
                 try:
-                    video_id = await generate_video(ai_response, "r79e1c033f", userEmail)
+                    # r084238898 uses the base video model of a woman
+                    # The different IDs are available at: https://platform.tavus.io/videos/create
+                    video_id = await generate_video(ai_response, "r084238898", userEmail)
                     video_link_data = await get_video_link(video_id)
 
                     if video_link_data:
