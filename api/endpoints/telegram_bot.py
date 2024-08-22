@@ -173,7 +173,12 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 await update.message.reply_text(ai_response)
             elif response_type == 'audio':
                 audio_file_path = text_to_speech_file(ai_response)
-                await update.message.reply_audio(audio=open(audio_file_path, "rb"))
+
+                # The following line will put the audio in auto repeat mode in the telegram app
+                # await update.message.reply_audio(audio=open(audio_file_path, "rb"))
+                # The following line will not put the audio in auto repeat mode in the telegram app
+                with open(audio_file_path, "rb") as audio:
+                    await update.message.reply_voice(voice=audio)
             elif response_type == 'video':
                 try:
                     video_id = await generate_video(ai_response, "r79e1c033f", userEmail)

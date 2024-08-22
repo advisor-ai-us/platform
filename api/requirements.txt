@@ -6,3 +6,4 @@ PyMuPDF
 frontend
 tools
 python-telegram-bot
+elevenlabs

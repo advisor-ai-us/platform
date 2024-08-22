@@ -5,3 +5,4 @@ data/*
 venv
 pdf_uploads/*
 mp3_temp/*
+*~
