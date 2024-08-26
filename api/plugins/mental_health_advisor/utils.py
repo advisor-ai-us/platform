@@ -4,6 +4,7 @@ from flask import jsonify
 from common_utils import *
 from config import *
 from .system_prompt import MENTAL_HEALTH_ADVISOR_PROMPT
+from datetime import datetime
 
 def handle_incoming_user_message_to_mental_health_advisor(userEmail, message):
     text_sent_to_ai_in_the_prompt = get_system_prompt_with_latest_health_data(userEmail)
@@ -135,7 +136,9 @@ def get_system_prompt_with_latest_health_data(email):
     conn.close()
 
     # Use the imported MENTAL_HEALTH_ADVISOR_PROMPT
+    current_datetime = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
     updated_prompt = MENTAL_HEALTH_ADVISOR_PROMPT.replace("[HEALTH_DATA]", health_data)
     updated_prompt = updated_prompt.replace("[CONVERSATION_HISTORY]", conversation_history_str)
+    updated_prompt += f"\n\nThe current date and time is {current_datetime}"
 
     return [{"role": "system", "content": updated_prompt}]

@@ -19,28 +19,28 @@
         <el-form-item label="Password" prop="password">
           <el-input v-model="waitlistForm.password" type="password" autocomplete="off"></el-input>
         </el-form-item>
-        <el-form-item label="About Yourself" prop="aboutYourself">
+        <!-- <el-form-item label="About Yourself" prop="aboutYourself">
           <el-input type="textarea" v-model="waitlistForm.aboutYourself" :rows="2" placeholder="Tell us about yourself..."></el-input>
         </el-form-item>
         <el-form-item label="Biggest Problem to Solve" prop="biggestProblem">
           <el-input type="textarea" v-model="waitlistForm.biggestProblem" :rows="2" placeholder="What's the biggest problem you hope to solve with an AI Finance analyst?"></el-input>
-        </el-form-item>
-        <el-form-item label="Invite Code">
-          <el-input v-model="waitlistForm.inviteCode" autocomplete="off" @keyup.enter="handleInviteCode" @blur="handleInviteCode" :disabled="inviteCodeValid === 'valid'" @input="inviteCodeValid = ''"></el-input>
+        </el-form-item> -->
+        <el-form-item label="Discount code">
+          <el-input v-model="waitlistForm.discountCode" autocomplete="off" @keyup.enter="handleDiscountCode" @blur="handleDiscountCode" :disabled="discountCodeValid === 'valid'" @input="discountCodeValid = ''"></el-input>
 
-          <span v-if="inviteCodeValid === 'valid'" style="color: green;line-height: 14px;font-style: italic;font-size: small;">
+          <span v-if="discountCodeValid === 'valid'" style="color: green;line-height: 14px;font-style: italic;font-size: small;">
             <el-icon style="vertical-align: bottom;"><Select /></el-icon>
-            Invite code is valid
+            Discount code is valid
           </span>
-          <span v-else-if="inviteCodeValid === 'invalid'" style="color: red;line-height: 14px;font-style: italic;font-size: small;">
+          <span v-else-if="discountCodeValid === 'invalid'" style="color: red;line-height: 14px;font-style: italic;font-size: small;">
             <el-icon style="vertical-align: bottom;"><CloseBold /></el-icon>
-            Invite code is invalid
+            Discount code is invalid
           </span>
 
         </el-form-item>
 
         <!-- Credit Card Information -->
-        <el-form-item label="Card Information" class="card-element" :style="{ display: inviteCodeValid === 'valid' ? 'block' : 'none' }">
+        <el-form-item label="Card Information" class="card-element">
           <div id="card-element" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;"></div>
         </el-form-item>
 
@@ -66,7 +66,7 @@ export default {
         password: '',
         aboutYourself: '',
         biggestProblem: '',
-        inviteCode: ''
+        discountCode: ''
       },
       waitlistRules: {
         fullName: [
@@ -87,7 +87,7 @@ export default {
           { required: true, message: 'Please describe the biggest problem you hope to solve', trigger: 'blur' }
         ]
       },
-      inviteCodeValid: '',
+      discountCodeValid: '',
       stripe: null,
       cardElement: null
     };
@@ -109,28 +109,44 @@ export default {
     handleJoinWaitlist() {
       this.$refs.waitlistForm.validate(async (valid) => {
         if (valid) {
+          // Check if discountCodeValid is invalid and return
+          if (this.waitlistForm.discountCode && this.discountCodeValid === 'invalid') {
+            this.$message({
+              message: 'Discount code is invalid',
+              type: 'error'
+            });
+            return;
+          }
+
           let paymentMethodId = null;
 
-          if (this.inviteCodeValid === 'valid') {
-            // Create a payment method and handle the payment
-            const { error, paymentMethod } = await this.stripe.createPaymentMethod({
-              type: 'card',
-              card: this.cardElement,
-              billing_details: {
-                name: this.waitlistForm.fullName,
-                email: this.waitlistForm.email
-              }
-            });
-
-            if (error) {
-              this.$message({
-                message: error.message,
-                type: 'error'
-              });
-              return;
+          // Create a payment method and handle the payment
+          const { error, paymentMethod } = await this.stripe.createPaymentMethod({
+            type: 'card',
+            card: this.cardElement,
+            billing_details: {
+              name: this.waitlistForm.fullName,
+              email: this.waitlistForm.email
             }
-            paymentMethodId = paymentMethod.id;
+          });
+
+          if (error) {
+            this.$message({
+              message: error.message,
+              type: 'error'
+            });
+            return;
           }
+          
+          if (error) {
+            this.$message({
+              message: error.message || 'Card information is invalid',
+              type: 'error'
+            });
+            return;
+          }
+
+          paymentMethodId = paymentMethod.id;
 
           axios.post(this.baseUrlForApiCall + 'join_waitlist', {
             ...this.waitlistForm,
@@ -155,18 +171,19 @@ export default {
         }
       });
     },
-    handleInviteCode() {
-      if (this.waitlistForm.inviteCode) {
-        axios.post(this.baseUrlForApiCall + 'validate_invite_code', { inviteCode: this.waitlistForm.inviteCode })
+    handleDiscountCode() {
+      if (this.waitlistForm.discountCode) {
+        axios.post(this.baseUrlForApiCall + 'validate_discount_code', { discountCode: this.waitlistForm.discountCode })
           .then((response) => {
             if (response.data.valid) {
-              this.inviteCodeValid = 'valid';
-            } else {
-              this.inviteCodeValid = 'invalid';
+              this.discountCodeValid = 'valid';
+            }
+            else {
+              this.discountCodeValid = 'invalid';
             }
           })
           .catch((error) => {
-            this.inviteCodeValid = 'invalid';
+            this.discountCodeValid = 'invalid';
           });
       }
     },
@@ -176,7 +193,7 @@ export default {
       this.waitlistForm.password = '';
       this.waitlistForm.aboutYourself = '';
       this.waitlistForm.biggestProblem = '';
-      this.waitlistForm.inviteCode = '';
+      this.waitlistForm.discountCode = '';
     }
   }
 };

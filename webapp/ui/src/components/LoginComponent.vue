@@ -18,6 +18,8 @@
             </el-form-item>
             <el-form-item>
               <el-button type="primary" native-type="submit">Login</el-button>
+              <!-- Reset password -->
+              <el-button type="primary" @click="$router.push({ name: 'ResetPassword' })" link>Reset Password</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>

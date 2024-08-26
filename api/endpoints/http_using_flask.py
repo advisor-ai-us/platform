@@ -1119,9 +1119,9 @@ def join_waitlist():
     password = data.get('password')
     about_yourself = data.get('aboutYourself')
     biggest_problem = data.get('biggestProblem')
-    invite_code = data.get('inviteCode')
+    discount_code = data.get('discountCode')
 
-    if not full_name or not email or not about_yourself or not biggest_problem:
+    if not full_name or not email:
         return jsonify({"error": "All fields are required"}), 400
 
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
@@ -1130,8 +1130,8 @@ def join_waitlist():
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    # Check if the invite code is valid and set waitlist status
-    if invite_code and invite_code == 'jaikalima':
+    # Check if the discount_code is valid and set waitlist status
+    if discount_code and discount_code == 'jaikalima':
         is_waitlist = False
     else:
         is_waitlist = True
@@ -1141,9 +1141,17 @@ def join_waitlist():
 
     if paymentMethodId:
         try:
+            amount = int(os.getenv('STRIPE_PAYMENT_AMOUNT'))
+            discount_percentage = int(os.getenv('DISCOUNT_PERCENTAGE_FOR_REFERRAL'))
+
+            if discount_code:
+                discounted_amount = amount - (amount * discount_percentage // 100)
+            else:
+                discounted_amount = amount
+
             # Create a PaymentIntent with Stripe
             intent = stripe.PaymentIntent.create(
-                amount=5000,  # $50.00
+                amount=discounted_amount,
                 currency='usd',
                 payment_method=paymentMethodId,
                 confirm=True,
@@ -1163,11 +1171,11 @@ def join_waitlist():
                 conn.commit()
 
                 # Save the user referral relationship
-                conn.execute("INSERT INTO user_referral_relationship (user_email, referred_code) VALUES (?, ?)", (email, invite_code))
+                conn.execute("INSERT INTO user_referral_relationship (user_email, referred_code) VALUES (?, ?)", (email, discount_code))
                 conn.commit()
 
                 # Increment signup_count in referral_codes for the referrer
-                c.execute("SELECT referrer_owner_email FROM referral_codes WHERE referred_code = ?", (invite_code,))
+                c.execute("SELECT referrer_owner_email FROM referral_codes WHERE referred_code = ?", (discount_code,))
                 row = c.fetchone()
                 
                 if row:
@@ -1176,7 +1184,7 @@ def join_waitlist():
                     
                     referrer_conn = sqlite3.connect(referrer_db_name)
                     referrer_cursor = referrer_conn.cursor()
-                    referrer_cursor.execute("UPDATE referrals SET signup_count = signup_count + 1 WHERE referred_code = ?", (invite_code,))
+                    referrer_cursor.execute("UPDATE referrals SET signup_count = signup_count + 1 WHERE referred_code = ?", (discount_code,))
                     referrer_conn.commit()
                     referrer_conn.close()
             else:
@@ -1238,6 +1246,35 @@ def login():
         return jsonify({"message": "Login successful", "token": token, "fullName": row[1], "userEmail": userEmail}), 200
     else:
         return jsonify({"error": "Invalid email or password"}), 401
+
+@app.route('/acr/reset_password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    userEmail = data.get('email')
+    password = data.get('password')
+
+    if not userEmail or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    try:
+        # Check if the email exists in the database
+        c.execute("SELECT 1 FROM users WHERE email = ?", (userEmail,))
+        row = c.fetchone()
+
+        if not row:
+            return jsonify({"error": "Email not found"}), 404
+
+        hashed_password = generate_password_hash(password)
+
+        c.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, userEmail))
+        conn.commit()
+        return jsonify({"message": "Password reset successfully"}), 200
+    finally:
+        conn.close()
 
 @app.route('/acr/validate_token', methods=['GET', 'POST'])
 def validate_token():
@@ -1968,13 +2005,13 @@ def get_referral_codes():
 
     return jsonify([{"code": row[1], "signups": row[2], "createdAt": row[3]} for row in rows])
 
-@app.route('/acr/validate_invite_code', methods=['POST'])
-def validate_invite_code():
+@app.route('/acr/validate_discount_code', methods=['POST'])
+def validate_discount_code():
     data = request.get_json()
-    code = data.get('inviteCode')
+    code = data.get('discountCode')
 
     if not code:
-        return jsonify({"error": "Invite code is required"}), 400
+        return jsonify({"error": "Discount code is required"}), 400
 
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
     conn = sqlite3.connect(db_name)
