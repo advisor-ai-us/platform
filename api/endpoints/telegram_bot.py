@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler
 from dotenv import load_dotenv
-import os, sys, sqlite3, requests, asyncio, uuid, time
+import os, sys, sqlite3, requests, asyncio, uuid, time, stripe
 
 # Add the parent directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +25,8 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 client = ElevenLabs(
     api_key=ELEVENLABS_API_KEY,
 )
+
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 # Function to start the bot
 async def start(update: Update, context: CallbackContext) -> None:
@@ -133,84 +135,202 @@ async def set_response_type(update: Update, context: CallbackContext) -> None:
 async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
-    context.user_data['response_type'] = query.data
-    await query.edit_message_text(text=f"You've selected {query.data} responses.")
-
+    
+    if query.data == 'make_payment':
+        await button_callback(update, context)
+    else:
+        context.user_data['response_type'] = query.data
+        await query.edit_message_text(text=f"You've selected {query.data} responses.")
 
 # Function to handle messages
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    
-    if user_message == 'Change Response Type':  # Check if the user pressed the 'Change Response Type' button
-        await set_response_type(update, context)  # Call the existing set_response_type function to show the inline keyboard
-        return
-
-    #print(update)
     userName = update.message.from_user.username
 
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
-    if not os.path.exists(db_name):
-        init_central_coordinator_db()
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute("SELECT email FROM users WHERE telegram_username = ?", (userName,))
+    c.execute("SELECT email, is_waitlist FROM users WHERE telegram_username = ?", (userName,))
     row = c.fetchone()
 
     if row:
-        userEmail = row[0]
-        
-        # check handle_allow_user_to_free_chat
-        if handle_allow_user_to_free_chat(userEmail):
-            user_message = update.message.text
-            ai_response = ai_chat_logic(user_message, userEmail)
-
-            response_type = context.user_data.get('response_type', 'text')
-
-            if response_type == 'text':
-                await update.message.reply_text(ai_response)
-            elif response_type == 'audio':
-                audio_file_path = text_to_speech_file(ai_response)
-
-                # The following line will put the audio in auto repeat mode in the telegram app
-                # await update.message.reply_audio(audio=open(audio_file_path, "rb"))
-                # The following line will not put the audio in auto repeat mode in the telegram app
-                with open(audio_file_path, "rb") as audio:
-                    await update.message.reply_voice(voice=audio)
-            elif response_type == 'video':
-                try:
-                    # r084238898 uses the base video model of a woman
-                    # The different IDs are available at: https://platform.tavus.io/videos/create
-                    video_id = await generate_video(ai_response, "r084238898", userEmail)
-                    video_link_data = await get_video_link(video_id)
-
-                    if video_link_data:
-                        video_link = video_link_data.get("download_url")
-                        await update.message.reply_video(video_link)
-                    else:
-                        await update.message.reply_text("Failed to generate video. Here's your text response:\n\n" + ai_response)
-                except Exception as e:
-                    await update.message.reply_text("An error occurred while generating the video. Here's your text response:\n\n" + ai_response)
+        userEmail, is_waitlist = row
+        if is_waitlist:
+            await handle_waitlist_user(update, context, userEmail)
         else:
-            await update.message.reply_text("You have reached your free chat limit. Please pay using stripe to continue.")
+            await handle_active_user(update, context, userEmail, user_message)
     else:
-        user_message = update.message.text
-        if 'waiting_for_email' in context.user_data and context.user_data['waiting_for_email']:
-            # User is providing their email
-            if '@' in user_message and '.' in user_message:  # Simple email validation
-                password = generate_password_hash("12345")
-                c.execute("INSERT INTO users (telegram_username, email, full_name, password) VALUES (?, ?, ?, ?)", (userName, user_message, userName, password))
-                conn.commit()
-                context.user_data['waiting_for_email'] = False
-                await update.message.reply_text(f"Thank you! Your email {user_message} has been registered.")
-            else:
-                await update.message.reply_text("That doesn't look like a valid email. Please try again:")
-        else:
-            # Ask for email
-            context.user_data['waiting_for_email'] = True
-            await update.message.reply_text("Please enter your email:")
+        await handle_new_user(update, context, userName, user_message)
 
     conn.close()
+
+async def handle_waitlist_user(update: Update, context: CallbackContext, userEmail: str):
+    if 'waiting_for_discount_code' in context.user_data and context.user_data['waiting_for_discount_code']:
+        await button_callback(update, context)
+        return
+
+    context.user_data['user_email'] = userEmail  # Store the user's email in the context
+    keyboard = [
+        [InlineKeyboardButton("Make Payment", callback_data='make_payment')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "You are on the waitlist. To start chatting, please make a payment of $50.",
+        reply_markup=reply_markup
+    )
+
+async def handle_active_user(update: Update, context: CallbackContext, userEmail: str, user_message: str):
+    ai_response = ai_chat_logic(user_message, userEmail)
+    await update.message.reply_text(ai_response)
+
+async def handle_new_user(update: Update, context: CallbackContext, userName: str, user_message: str):
+    if 'waiting_for_email' in context.user_data and context.user_data['waiting_for_email']:
+        if '@' in user_message and '.' in user_message:  # Simple email validation
+            await register_new_user(update, context, userName, user_message)
+        else:
+            await update.message.reply_text("That doesn't look like a valid email. Please try again:")
+    else:
+        context.user_data['waiting_for_email'] = True
+        await update.message.reply_text("Please enter your email:")
+
+async def register_new_user(update: Update, context: CallbackContext, userName: str, userEmail: str):
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("SELECT 1 FROM users WHERE email = ?", (userEmail,))
+    existing_user = c.fetchone()
+    
+    if existing_user:
+        await update.message.reply_text("This email is already registered. Please use a different email.")
+    else:
+        password = generate_password_hash("12345")
+        c.execute("INSERT INTO users (telegram_username, email, full_name, password, is_waitlist) VALUES (?, ?, ?, ?, 1)", (userName, userEmail, userName, password))
+        conn.commit()
+        context.user_data['waiting_for_email'] = False
+        await handle_waitlist_user(update, context, userEmail)
+
+    conn.close()
+
+async def button_callback(update: Update, context: CallbackContext) -> None:
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+
+        if query.data == 'make_payment':
+            try:
+                user = update.effective_user
+                db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+                conn = sqlite3.connect(db_name)
+                c = conn.cursor()
+                c.execute("SELECT email FROM users WHERE telegram_username = ?", (user.username,))
+                user_email = c.fetchone()[0]
+                conn.close()
+
+                # Ask for discount code
+                await query.edit_message_text("Do you have a discount code? If yes, please enter it now. If not, type 'no'.")
+                context.user_data['waiting_for_discount_code'] = True
+                return
+
+            except Exception as e:
+                await query.edit_message_text(text=f"Sorry, there was an error processing your request: {str(e)}")
+        else:
+            context.user_data['response_type'] = query.data
+            await query.edit_message_text(text=f"You've selected {query.data} responses.")
+    elif update.message:
+        if context.user_data.get('waiting_for_discount_code'):
+            discount_code = update.message.text.strip()
+            context.user_data['waiting_for_discount_code'] = False
+
+            if discount_code.lower() == 'no':
+                discount_percentage = 0
+            else:
+                # Validate discount code
+                db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+                conn = sqlite3.connect(db_name)
+                c = conn.cursor()
+                c.execute("SELECT 1 FROM referral_codes WHERE referred_code = ? AND is_active = 1", (discount_code,))
+                is_valid = c.fetchone() is not None
+                conn.close()
+
+                if is_valid:
+                    discount_percentage = 20
+                    await update.message.reply_text("Valid discount code! You'll receive a 20% discount.")
+
+                    # # Insert a row into user_referral_relationship table
+                    # db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+                    # conn = sqlite3.connect(db_name)
+                    # c = conn.cursor()
+                    # c.execute("INSERT INTO user_referral_relationship (referred_code, user_email) VALUES (?, ?)", 
+                    #         (discount_code, user_email))
+                    # conn.commit()
+                    # conn.close()
+                else:
+                    discount_percentage = 0
+                    await update.message.reply_text("Invalid discount code. No discount will be applied.")
+
+            # Proceed with payment
+            amount = int(os.getenv('STRIPE_PAYMENT_AMOUNT'))
+            discounted_amount = amount * (100 - discount_percentage) // 100
+
+            user_email = context.user_data.get('user_email')
+            if not user_email:
+                db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+                conn = sqlite3.connect(db_name)
+                c = conn.cursor()
+                c.execute("SELECT email FROM users WHERE telegram_username = ?", (update.message.from_user.username,))
+                user_email = c.fetchone()[0]
+                conn.close()
+
+            # if discount code is applied, then insert into user_referral_relationship table
+            if discount_percentage > 0:
+                db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+                conn = sqlite3.connect(db_name)
+                c = conn.cursor()
+                c.execute("INSERT INTO user_referral_relationship (referred_code, user_email) VALUES (?, ?)", 
+                          (discount_code, user_email))
+                conn.commit()
+                # conn.close()
+
+                # Increment signup_count in referral_codes for the referrer
+                c.execute("SELECT referrer_owner_email FROM referral_codes WHERE referred_code = ?", (discount_code,))
+                row = c.fetchone()
+                
+                if row:
+                    referrer_owner_email = row[0]
+                    referrer_db_name = get_user_db(referrer_owner_email)
+                    
+                    referrer_conn = sqlite3.connect(referrer_db_name)
+                    referrer_cursor = referrer_conn.cursor()
+
+                    referrer_cursor.execute("UPDATE referrals SET signup_count = signup_count + 1 WHERE referred_code = ?", (discount_code,))
+                    referrer_conn.commit()
+                    referrer_conn.close()
+
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': 'Chat Subscription',
+                        },
+                        'unit_amount': discounted_amount,
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url='http://localhost:3003/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
+                #success_url='https://www.advisorai.us/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
+                cancel_url='https://www.advisorai.us/acr/cancel',
+                client_reference_id=user_email,
+            )
+
+            await update.message.reply_text(
+                text=f"Please complete the payment using this link: {session.url}",
+                reply_markup=None
+            )
 
 # Your AI chat logic
 def ai_chat_logic(pUserMessage, pUserEmail):
@@ -232,6 +352,9 @@ def main():
 
     # Handle all messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # Handle payment button callback
+    application.add_handler(CallbackQueryHandler(button_callback))
 
     # Start the Bot
     application.run_polling()
