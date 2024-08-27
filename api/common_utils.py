@@ -55,6 +55,7 @@ def init_central_coordinator_db():
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS payment_intents
                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT DEFAULT NULL,
                     payment_intent_id TEXT NOT NULL,
                     user_email TEXT NOT NULL,
                     status TEXT NOT NULL,

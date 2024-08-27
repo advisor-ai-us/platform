@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 import openai
 from openai import OpenAI
@@ -37,8 +37,8 @@ from system_prompts import (
     STOCK_PICKER_SYSTEM_REPORT
 )
 
-
 app = Flask(__name__)
+app.template_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 logging.basicConfig(level=logging.DEBUG)
 
 # Load environment variables from .env file
@@ -2025,6 +2025,44 @@ def validate_discount_code():
         return jsonify({"valid": True})
     else:
         return jsonify({"valid": False})
+
+@app.route('/acr/success', methods=['GET'])
+def payment_success():
+    session_id = request.args.get('session_id')
+    if not session_id:
+        return jsonify({"error": "No session ID provided"}), 400
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+        payment_intent = stripe.PaymentIntent.retrieve(session.payment_intent)
+        
+        if payment_intent.status == 'succeeded':
+            user_email = session.client_reference_id
+            client_secret = request.args.get('client_secret')
+            
+            # Update payment intent status in the database
+            db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+            #c.execute("UPDATE payment_intents SET status = 'succeeded' WHERE payment_intent_id = ?", (session.payment_intent,))
+            c.execute("INSERT INTO payment_intents (payment_intent_id, user_email, status, client_secret) VALUES (?, ?, ?, ?)",
+                      (session.payment_intent, user_email, 'succeeded', client_secret))
+
+            # Update user's waitlist status
+            c.execute("UPDATE users SET is_waitlist = 0 WHERE email = ?", (user_email,))
+            
+            conn.commit()
+            conn.close()
+            
+            return render_template('payment_success.html', user_email=user_email)
+        else:
+            return jsonify({"error": "Payment not successful"}), 400
+    except stripe.error.StripeError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/acr/cancel', methods=['GET'])
+def payment_cancel():
+    return render_template('payment_cancel.html')
 
 if __name__ == '__main__':
     init_central_coordinator_db()
