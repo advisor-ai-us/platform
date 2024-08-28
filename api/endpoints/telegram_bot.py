@@ -30,11 +30,11 @@ stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 # Function to start the bot
 async def start(update: Update, context: CallbackContext) -> None:
-    #keyboard = [['Change Response Type']]  # Adding the custom keyboard with 'Change Response Type'
-    #reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    keyboard = [['Change Response Type']]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
-    await update.message.reply_text('Hello! I am your AI bot. Use the button below to change your response type.')
-    await set_response_type(update, context)
+    await update.message.reply_text('Hello! I am your AI bot. The default response type is text, but you can change it. Use the button below to select a different response type.', reply_markup=reply_markup)
+    #await set_response_type(update, context)
 
 # Function to generate video
 async def generate_video(text_message, video_template_id, recipient_email):
@@ -134,17 +134,25 @@ async def set_response_type(update: Update, context: CallbackContext) -> None:
 # Function to handle button callback
 async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
-    await query.answer()
-    
-    if query.data == 'make_payment':
-        await button_callback(update, context)
-    else:
-        context.user_data['response_type'] = query.data
-        await query.edit_message_text(text=f"You've selected {query.data} responses.")
+    if query:
+        await query.answer()
+        
+        if query.data == 'make_payment':
+            await button_callback(update, context)
+        else:
+            context.user_data['response_type'] = query.data
+            await query.edit_message_text(text=f"You've selected {query.data} responses.")
+    elif update.message and update.message.text == 'Change Response Type':
+        await set_response_type(update, context)
 
 # Function to handle messages
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
+
+    if user_message == 'Change Response Type':
+        await set_response_type(update, context)
+        return
+
     userName = update.message.from_user.username
 
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
@@ -156,7 +164,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
 
     if row:
         userEmail, is_waitlist = row
-        if is_waitlist:
+        if is_waitlist and handle_allow_user_to_free_chat(userEmail) == False:
             await handle_waitlist_user(update, context, userEmail)
         else:
             await handle_active_user(update, context, userEmail, user_message)
@@ -176,13 +184,35 @@ async def handle_waitlist_user(update: Update, context: CallbackContext, userEma
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "You are on the waitlist. To start chatting, please make a payment of $50.",
+        "You are on the waitlist and have reached your free chat limit. Please make a payment of $50 to continue.",
         reply_markup=reply_markup
     )
 
 async def handle_active_user(update: Update, context: CallbackContext, userEmail: str, user_message: str):
     ai_response = ai_chat_logic(user_message, userEmail)
-    await update.message.reply_text(ai_response)
+    #await update.message.reply_text(ai_response)
+    response_type = context.user_data.get('response_type', 'text')
+    if response_type == 'text':
+        await update.message.reply_text(ai_response)
+    elif response_type == 'audio':
+        audio_file_path = text_to_speech_file(ai_response)
+        
+        with open(audio_file_path, "rb") as audio:
+            await update.message.reply_voice(voice=audio)
+    elif response_type == 'video':
+        try:
+            # r084238898 uses the base video model of a woman
+            # The different IDs are available at: https://platform.tavus.io/videos/create
+            video_id = await generate_video(ai_response, "r084238898", userEmail)
+            video_link_data = await get_video_link(video_id)
+
+            if video_link_data:
+                video_link = video_link_data.get("download_url")
+                await update.message.reply_video(video_link)
+            else:
+                await update.message.reply_text("Failed to generate video. Here's your text response:\n\n" + ai_response)
+        except Exception as e:
+            await update.message.reply_text("An error occurred while generating the video. Here's your text response:\n\n" + ai_response)
 
 async def handle_new_user(update: Update, context: CallbackContext, userName: str, user_message: str):
     if 'waiting_for_email' in context.user_data and context.user_data['waiting_for_email']:
@@ -209,7 +239,8 @@ async def register_new_user(update: Update, context: CallbackContext, userName: 
         c.execute("INSERT INTO users (telegram_username, email, full_name, password, is_waitlist) VALUES (?, ?, ?, ?, 1)", (userName, userEmail, userName, password))
         conn.commit()
         context.user_data['waiting_for_email'] = False
-        await handle_waitlist_user(update, context, userEmail)
+        await update.message.reply_text(f"Thank you! Your email {userEmail} has been registered.")
+        #await handle_waitlist_user(update, context, userEmail)
 
     conn.close()
 
@@ -355,6 +386,9 @@ def main():
 
     # Handle payment button callback
     application.add_handler(CallbackQueryHandler(button_callback))
+
+    # Handle "Change Response Type" button
+    application.add_handler(MessageHandler(filters.Regex('^Change Response Type$'), button))
 
     # Start the Bot
     application.run_polling()
