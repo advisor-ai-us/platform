@@ -1,4 +1,4 @@
-import sqlite3, os, json, re
+import sqlite3, os, json, re, time, requests, asyncio
 from openai import OpenAI
 from flask import jsonify
 
@@ -132,6 +132,89 @@ def handle_allow_user_to_free_chat(email):
         return False
     else:
         return True
+
+# Function to generate video
+async def generate_video(text_message, video_template_id, recipient_email):
+    # API request headers
+    headers = {
+        "x-api-key": TAVUS_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    # Request body
+    payload = {
+        "replica_id": video_template_id,
+        "script": text_message,
+        "video_name": recipient_email
+    }
+
+    # Make a POST request to Tavus API
+    response = requests.request("POST", TAVUS_API_URL, json=payload, headers=headers)
+    if response.status_code == 200:
+        return response.json().get("video_id")
+    else:
+        return str(response.json())
+
+async def get_video_link(video_id):
+    url = f"https://tavusapi.com/v2/videos/{video_id}"
+    headers = {"x-api-key": TAVUS_API_KEY}
+    
+    max_retries = 20  # Set a limit for retries (10 retries = 50 seconds total wait time)
+    retry_delay = 30  # Wait 5 seconds between retries
+    
+    for _ in range(max_retries):
+        response = requests.request("GET", url, headers=headers)
+        result = response.json()
+        
+        # Check if the video is ready (download_url or stream_url should be available)
+        if result.get("download_url"):
+            return result
+        
+        # Check the status and log progress
+        status = result.get("status")
+        if status in ["queued", "processing"]:
+            print(f"Video is still processing: {result.get('generation_progress')}% complete.")
+        else:
+            print(f"Unexpected status: {status}")
+        
+        # Wait before the next check
+        await asyncio.sleep(retry_delay)
+    
+    return None  # Return None if video is still not ready after max retries
+
+def text_to_speech_file(text: str) -> str:
+    # Calling the text_to_speech conversion API with detailed parameters
+    response = client.text_to_speech.convert(
+        # female voice XrExE9yKIg1WjnnlVkGX
+        # male voice pNInz6obpgDQGcFmaJgB
+        voice_id="XrExE9yKIg1WjnnlVkGX",
+        output_format="mp3_22050_32",
+        text=text,
+        model_id="eleven_turbo_v2_5", # use the turbo model for low latency
+        voice_settings=VoiceSettings(
+            stability=0.0,
+            similarity_boost=1.0,
+            style=0.0,
+            use_speaker_boost=True,
+        ),
+    )
+
+    # Create mp3_temp directory if it doesn't exist
+    mp3_temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mp3_temp")
+    os.makedirs(mp3_temp_dir, exist_ok=True)
+
+    # Generating a filename with current timestamp for the output MP3 file
+    current_timestamp = int(time.time())
+    save_file_path = os.path.join(mp3_temp_dir, f"response_{current_timestamp}.mp3")
+   
+    # Writing the audio to a file
+    with open(save_file_path, "wb") as f:
+        for chunk in response:
+            if chunk:
+                f.write(chunk)
+
+    # Return the path of the saved audio file
+    return save_file_path
 
 def get_user_db(email):
     db_folder = os.path.join(DATABASE_PATH, email)
