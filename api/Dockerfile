@@ -25,4 +25,6 @@ RUN pip install stripe
 
 RUN pip install elevenlabs
 
+RUN pip install twilio
+
 CMD ["/usr/bin/supervisord", "-n","-c","/etc/supervisor/supervisord.conf"]
