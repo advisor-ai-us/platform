@@ -28,7 +28,7 @@ client = RestClient(auth_id, auth_token)
 def sms_test():
     return jsonify(status="success", message="SMS webhook is working"), 200
 
-@app.route('/sms/', methods=['POST', 'GET'])
+@app.route('/sms/receive', methods=['POST', 'GET'])
 def sms_webhook():
     # incoming_msg = request.values.get('Text', '').lower()
     # sender = request.values.get('From')
@@ -36,6 +36,8 @@ def sms_webhook():
         data = request.get_json()
     else:
         data = request.form.to_dict()
+
+    print(f"Data: {data}")
 
     incoming_msg = data.get('Text', '').lower()
     sender = data.get('From')
