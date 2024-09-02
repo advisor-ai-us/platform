@@ -7,3 +7,6 @@ frontend
 tools
 python-telegram-bot
 elevenlabs
+plivo
+twilio
+stripe
