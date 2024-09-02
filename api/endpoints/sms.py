@@ -37,8 +37,8 @@ def sms_webhook():
     else:
         data = request.form.to_dict()
 
-    incoming_msg = data.get('text', '').lower()
-    sender = data.get('from')
+    incoming_msg = data.get('Text', '').lower()
+    sender = data.get('From')
 
     print(f"Incoming message: {incoming_msg}")
     print(f"Sender: {sender}")
