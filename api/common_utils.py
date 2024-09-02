@@ -17,6 +17,7 @@ def init_central_coordinator_db():
                   email TEXT UNIQUE NOT NULL,
                   telegram_username TEXT UNIQUE,
                   whatsapp_number TEXT UNIQUE,
+                  phone_number TEXT UNIQUE,
                   full_name TEXT NOT NULL,
                   password TEXT NOT NULL,
                   openai_api_key TEXT DEFAULT NULL,
