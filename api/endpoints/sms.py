@@ -32,13 +32,17 @@ def sms_test():
 def sms_webhook():
     # incoming_msg = request.values.get('Text', '').lower()
     # sender = request.values.get('From')
-    if request.method == 'POST':
-        incoming_msg = request.values.get('Text', '').lower()
-        sender = request.values.get('From')
+    if request.is_json:
+        data = request.get_json()
     else:
-        incoming_msg = request.args.get('Text', '').lower()
-        sender = request.args.get('From')
-        
+        data = request.form.to_dict()
+
+    incoming_msg = data.get('text', '').lower()
+    sender = data.get('from')
+
+    print(f"Incoming message: {incoming_msg}")
+    print(f"Sender: {sender}")
+
     # Extract the phone number from the sender
     phone_number = sender
 
