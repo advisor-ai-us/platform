@@ -25,6 +25,7 @@ def init_central_coordinator_db():
                   about_yourself TEXT,
                   biggest_problem TEXT,
                   is_waitlist BOOLEAN DEFAULT FALSE,
+                  waiting_for_discount INTEGER DEFAULT 0,
                   created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()

@@ -40,7 +40,10 @@ def sms_webhook():
     incoming_msg = data.get('Text', '').lower()
     sender = data.get('From')
 
-    # Extract the phone number from the sender
+    # get the incoming message and sender from the url params. http://localhost:3005/sms/receive?Text=hi&From=9007547626
+    # incoming_msg = request.values.get('Text', '')
+    # sender = request.values.get('From')
+
     phone_number = sender
 
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
@@ -54,14 +57,16 @@ def sms_webhook():
         userEmail, is_waitlist = row
         if is_waitlist:
             if handle_allow_user_to_free_chat(userEmail) == False:
-                response, waiting_for_discount = handle_waitlist_user(userEmail)
+                c.execute("SELECT waiting_for_discount FROM users WHERE email = ?", (userEmail,))
+                waiting_for_discount = c.fetchone()[0]
+
                 if waiting_for_discount:
-                    # Store this state in a temporary cache or in-memory storage
-                    # For simplicity, we'll use a global dictionary here
-                    global waiting_for_discount_codes
-                    waiting_for_discount_codes[userEmail] = True
-                else:
                     response = handle_discount_code(userEmail, incoming_msg)
+                    c.execute("UPDATE users SET waiting_for_discount = 0 WHERE email = ?", (userEmail,))
+                else:
+                    response, waiting_for_discount = handle_waitlist_user(userEmail)
+                    if waiting_for_discount:
+                        c.execute("UPDATE users SET waiting_for_discount = 1 WHERE email = ?", (userEmail,))
             else:
                 response = handle_active_user(userEmail, incoming_msg)
         else:
@@ -69,9 +74,9 @@ def sms_webhook():
     else:
         response = handle_new_user(phone_number, incoming_msg)
 
+    conn.commit()
     conn.close()
 
-    # Send response back to the user
     client.messages.create(
         src=os.getenv('PLIVO_PHONE_NUMBER'),
         dst=phone_number,
@@ -82,9 +87,10 @@ def sms_webhook():
 
 def handle_waitlist_user(userEmail):
     response = "You are on the waitlist and have reached your free chat limit. Do you have a discount code? If yes, please enter it now. If not, reply with 'no'."
-    return response, True  # Return a tuple with the response and a flag indicating we're waiting for a discount code
+    return response, True  # We're still waiting for a discount code at this point
 
 def handle_discount_code(userEmail, discount_code):
+    response = ""
     if discount_code.lower() == 'no':
         discount_percentage = 0
     else:
@@ -96,12 +102,16 @@ def handle_discount_code(userEmail, discount_code):
         is_valid = c.fetchone() is not None
         conn.close()
 
+        # print the discount code and is_valid in terminal
+        #print(f"Discount code: {discount_code}, Is valid: {is_valid}")
+        #return discount_code, is_valid
+
         if is_valid:
             discount_percentage = 20
-            response = "Valid discount code! You'll receive a 20% discount."
+            response += "Valid discount code! You'll receive a 20% discount."
         else:
             discount_percentage = 0
-            response = "Invalid discount code. No discount will be applied."
+            response += "Invalid discount code. No discount will be applied."
 
     # Proceed with payment
     amount = int(os.getenv('STRIPE_PAYMENT_AMOUNT'))
@@ -125,14 +135,6 @@ def handle_discount_code(userEmail, discount_code):
         cancel_url='https://www.advisorai.us/acr/cancel',
         client_reference_id=userEmail,
     )
-
-    # Reset the waiting_for_discount_code state
-    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
-    c.execute("UPDATE users SET waiting_for_discount_code = 0 WHERE email = ?", (userEmail,))
-    conn.commit()
-    conn.close()
 
     response += f"\n\nPlease complete the payment using this link: {session.url}"
     return response

@@ -258,8 +258,8 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
                     'quantity': 1,
                 }],
                 mode='payment',
-                success_url='http://localhost:3003/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
-                #success_url='https://www.advisorai.us/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
+                #success_url='http://localhost:3003/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
+                success_url='https://www.advisorai.us/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
                 cancel_url='https://www.advisorai.us/acr/cancel',
                 client_reference_id=user_email,
             )
