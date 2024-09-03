@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from plivo import RestClient
-import os, sys, sqlite3, logging
+import os, sys, sqlite3, logging, stripe
 from dotenv import load_dotenv
 
 # Add the parent directory to the Python path
@@ -23,6 +23,8 @@ logging.basicConfig(level=logging.DEBUG)
 auth_id = os.getenv('PLIVO_AUTH_ID')
 auth_token = os.getenv('PLIVO_AUTH_TOKEN')
 client = RestClient(auth_id, auth_token)
+
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 @app.route('/sms/test', methods=['GET'])
 def sms_test():
@@ -50,8 +52,18 @@ def sms_webhook():
 
     if row:
         userEmail, is_waitlist = row
-        if is_waitlist and handle_allow_user_to_free_chat(userEmail) == False:
-            response = handle_waitlist_user(userEmail)
+        if is_waitlist:
+            if handle_allow_user_to_free_chat(userEmail) == False:
+                response, waiting_for_discount = handle_waitlist_user(userEmail)
+                if waiting_for_discount:
+                    # Store this state in a temporary cache or in-memory storage
+                    # For simplicity, we'll use a global dictionary here
+                    global waiting_for_discount_codes
+                    waiting_for_discount_codes[userEmail] = True
+                else:
+                    response = handle_discount_code(userEmail, incoming_msg)
+            else:
+                response = handle_active_user(userEmail, incoming_msg)
         else:
             response = handle_active_user(userEmail, incoming_msg)
     else:
@@ -69,7 +81,61 @@ def sms_webhook():
     return jsonify(status="success"), 200
 
 def handle_waitlist_user(userEmail):
-    return "You are on the waitlist and have reached your free chat limit. Please make a payment of $50 to continue."
+    response = "You are on the waitlist and have reached your free chat limit. Do you have a discount code? If yes, please enter it now. If not, reply with 'no'."
+    return response, True  # Return a tuple with the response and a flag indicating we're waiting for a discount code
+
+def handle_discount_code(userEmail, discount_code):
+    if discount_code.lower() == 'no':
+        discount_percentage = 0
+    else:
+        # Validate discount code
+        db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM referral_codes WHERE referred_code = ? AND is_active = 1", (discount_code,))
+        is_valid = c.fetchone() is not None
+        conn.close()
+
+        if is_valid:
+            discount_percentage = 20
+            response = "Valid discount code! You'll receive a 20% discount."
+        else:
+            discount_percentage = 0
+            response = "Invalid discount code. No discount will be applied."
+
+    # Proceed with payment
+    amount = int(os.getenv('STRIPE_PAYMENT_AMOUNT'))
+    discounted_amount = amount * (100 - discount_percentage) // 100
+
+    # Create Stripe Checkout session
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {
+                    'name': 'Chat Subscription',
+                },
+                'unit_amount': discounted_amount,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url='https://www.advisorai.us/acr/success?session_id={CHECKOUT_SESSION_ID}&client_secret={CLIENT_SECRET}',
+        cancel_url='https://www.advisorai.us/acr/cancel',
+        client_reference_id=userEmail,
+    )
+
+    # Reset the waiting_for_discount_code state
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("UPDATE users SET waiting_for_discount_code = 0 WHERE email = ?", (userEmail,))
+    conn.commit()
+    conn.close()
+
+    response += f"\n\nPlease complete the payment using this link: {session.url}"
+    return response
 
 def handle_active_user(userEmail, user_message):
     ai_response = ai_chat_logic(user_message, userEmail)
@@ -104,6 +170,8 @@ def register_new_user(phone_number, userEmail):
 def ai_chat_logic(pUserMessage, pUserEmail):
     response = handle_incoming_user_message_to_mental_health_advisor(pUserEmail, pUserMessage)
     return f"{response['response']}"
+
+waiting_for_discount_codes = {}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3005, debug=True)
