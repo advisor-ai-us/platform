@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler
 from dotenv import load_dotenv
-import os, sys, sqlite3, requests, asyncio, uuid, time, stripe
+import os, sys, sqlite3, requests, asyncio, uuid, time, stripe, importlib
 
 # Add the parent directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,12 +28,40 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Function to set response type
 async def set_response_type(update: Update, context: CallbackContext) -> None:
     keyboard = [
+        [InlineKeyboardButton("Change Advisor", callback_data='change_advisor'),
+         InlineKeyboardButton("Change Response Type", callback_data='change_response_type')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    current_advisor = context.user_data.get('current_advisor', 'Portfolio Performance')
+    current_response_type = context.user_data.get('response_type', 'text')
+    message_text = f'Currently talking to: {current_advisor}\n' \
+                   f'Using: {current_response_type}\n\n' \
+                   f'Choose an option:'
+
+    if update.message:
+        await update.message.reply_text(message_text, reply_markup=reply_markup)
+    elif update.callback_query:
+        await update.callback_query.edit_message_text(message_text, reply_markup=reply_markup)
+
+async def change_advisor(update: Update, context: CallbackContext) -> None:
+    plugins_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins')
+    advisors = [d for d in os.listdir(plugins_dir) if os.path.isdir(os.path.join(plugins_dir, d))]
+    
+    keyboard = [
+        [InlineKeyboardButton(advisor.replace('_', ' ').title(), callback_data=advisor)]
+        for advisor in advisors
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text('Please choose a coach:', reply_markup=reply_markup)
+
+async def change_response_type(update: Update, context: CallbackContext) -> None:
+    keyboard = [
         [InlineKeyboardButton("Text", callback_data='text'),
          InlineKeyboardButton("Audio", callback_data='audio'),
          InlineKeyboardButton("Video", callback_data='video')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text('Please choose your preferred response type:', reply_markup=reply_markup)
+    await update.callback_query.edit_message_text('Please choose a response type:', reply_markup=reply_markup)
 
 # Function to handle button callback
 async def button(update: Update, context: CallbackContext) -> None:
@@ -43,9 +71,18 @@ async def button(update: Update, context: CallbackContext) -> None:
         
         if query.data == 'make_payment':
             await button_callback(update, context)
-        else:
+        elif query.data == 'change_advisor':
+            await change_advisor(update, context)
+        elif query.data == 'change_response_type':
+            await change_response_type(update, context)
+        elif query.data in [d for d in os.listdir(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins')) if os.path.isdir(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins', d))]:
+            context.user_data['current_advisor'] = query.data.replace('_', ' ').title()
+            await query.edit_message_text(text=f"You've selected {context.user_data['current_advisor']} as your coach.")
+        elif query.data in ['text', 'audio', 'video']:
             context.user_data['response_type'] = query.data
             await query.edit_message_text(text=f"You've selected {query.data} responses.")
+        else:
+            await set_response_type(update, context)
     elif update.message and update.message.text == 'Change Response Type':
         await set_response_type(update, context)
 
@@ -93,7 +130,7 @@ async def handle_waitlist_user(update: Update, context: CallbackContext, userEma
     )
 
 async def handle_active_user(update: Update, context: CallbackContext, userEmail: str, user_message: str):
-    ai_response = ai_chat_logic(user_message, userEmail)
+    ai_response = ai_chat_logic(user_message, userEmail, context)
     #await update.message.reply_text(ai_response)
     response_type = context.user_data.get('response_type', 'text')
     if response_type == 'text':
@@ -270,8 +307,18 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
             )
 
 # Your AI chat logic
-def ai_chat_logic(pUserMessage, pUserEmail):
-    response = handle_incoming_user_message_to_mental_health_advisor(pUserEmail, pUserMessage)
+def ai_chat_logic(pUserMessage, pUserEmail, context):
+    current_advisor = context.user_data.get('current_advisor', 'Portfolio Performance')
+    advisor_function_name = f"handle_incoming_user_message_to_{current_advisor.lower().replace(' ', '_')}"
+    
+    try:
+        advisor_module = importlib.import_module(f"plugins.{current_advisor.lower().replace(' ', '_')}.utils")
+        advisor_function = getattr(advisor_module, advisor_function_name)
+        response = advisor_function(pUserEmail, pUserMessage)
+    except (ImportError, AttributeError):
+        # Fallback to default handler if the specific one is not found
+        response = handle_incoming_user_message_to_mental_health_advisor(pUserEmail, pUserMessage)
+    
     return f"{response['response']}"
 
 def main():
@@ -295,6 +342,12 @@ def main():
 
     # Handle "Change Response Type" button
     application.add_handler(MessageHandler(filters.Regex('^Change Response Type$'), button))
+
+    # Handle change advisor button
+    application.add_handler(CallbackQueryHandler(change_advisor, pattern='^change_advisor$'))
+
+    # Handle change response type button
+    application.add_handler(CallbackQueryHandler(change_response_type, pattern='^change_response_type$'))
 
     # Start the Bot
     application.run_polling()
