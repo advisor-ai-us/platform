@@ -28,13 +28,13 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Function to set response type
 async def set_response_type(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [InlineKeyboardButton("Change Advisor", callback_data='change_advisor'),
+        [InlineKeyboardButton("Change Coach", callback_data='change_coach'),
          InlineKeyboardButton("Change Response Type", callback_data='change_response_type')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    current_advisor = context.user_data.get('current_advisor', 'Portfolio Performance')
+    current_coach = context.user_data.get('current_coach', 'Portfolio Performance')
     current_response_type = context.user_data.get('response_type', 'text')
-    message_text = f'Currently talking to: {current_advisor}\n' \
+    message_text = f'Currently talking to: {current_coach}\n' \
                    f'Using: {current_response_type}\n\n' \
                    f'Choose an option:'
 
@@ -43,7 +43,7 @@ async def set_response_type(update: Update, context: CallbackContext) -> None:
     elif update.callback_query:
         await update.callback_query.edit_message_text(message_text, reply_markup=reply_markup)
 
-async def change_advisor(update: Update, context: CallbackContext) -> None:
+async def change_coach(update: Update, context: CallbackContext) -> None:
     plugins_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins')
     advisors = [d for d in os.listdir(plugins_dir) if os.path.isdir(os.path.join(plugins_dir, d))]
     
@@ -71,13 +71,13 @@ async def button(update: Update, context: CallbackContext) -> None:
         
         if query.data == 'make_payment':
             await button_callback(update, context)
-        elif query.data == 'change_advisor':
-            await change_advisor(update, context)
+        elif query.data == 'change_coach':
+            await change_coach(update, context)
         elif query.data == 'change_response_type':
             await change_response_type(update, context)
         elif query.data in [d for d in os.listdir(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins')) if os.path.isdir(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'plugins', d))]:
-            context.user_data['current_advisor'] = query.data.replace('_', ' ').title()
-            await query.edit_message_text(text=f"You've selected {context.user_data['current_advisor']} as your coach.")
+            context.user_data['current_coach'] = query.data.replace('_', ' ').title()
+            await query.edit_message_text(text=f"You've selected {context.user_data['current_coach']} as your coach.")
         elif query.data in ['text', 'audio', 'video']:
             context.user_data['response_type'] = query.data
             await query.edit_message_text(text=f"You've selected {query.data} responses.")
@@ -308,11 +308,11 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
 
 # Your AI chat logic
 def ai_chat_logic(pUserMessage, pUserEmail, context):
-    current_advisor = context.user_data.get('current_advisor', 'Portfolio Performance')
-    advisor_function_name = f"handle_incoming_user_message_to_{current_advisor.lower().replace(' ', '_')}"
+    current_coach = context.user_data.get('current_coach', 'Portfolio Performance')
+    advisor_function_name = f"handle_incoming_user_message_to_{current_coach.lower().replace(' ', '_')}"
     
     try:
-        advisor_module = importlib.import_module(f"plugins.{current_advisor.lower().replace(' ', '_')}.utils")
+        advisor_module = importlib.import_module(f"plugins.{current_coach.lower().replace(' ', '_')}.utils")
         advisor_function = getattr(advisor_module, advisor_function_name)
         response = advisor_function(pUserEmail, pUserMessage)
     except (ImportError, AttributeError):
@@ -344,7 +344,7 @@ def main():
     application.add_handler(MessageHandler(filters.Regex('^Change Response Type$'), button))
 
     # Handle change advisor button
-    application.add_handler(CallbackQueryHandler(change_advisor, pattern='^change_advisor$'))
+    application.add_handler(CallbackQueryHandler(change_coach, pattern='^change_coach$'))
 
     # Handle change response type button
     application.add_handler(CallbackQueryHandler(change_response_type, pattern='^change_response_type$'))
