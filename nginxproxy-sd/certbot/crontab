@@ -20,5 +20,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 #* * * * * root echo "Hello world" >> /var/log/cron.log 2>&1
 
 #Run following script run at 02:00am PST on every Saturday to check and auto renew ssl certificate from letsencrypt for advisorai.us:
-0  9  *  *  6  root /bin/bash /gt/gt-prog-repos/platform/nginxproxy-sd/certbot/command-to-get-certificate-for-chat.advisorai.us.sh
+0  9  *  *  6  root /bin/bash /gt/gt-prog-repos/platform/nginxproxy-sd/certbot/command-to-get-certificate-for-advisorai.us.sh
+
+#Run following script run at 02:30am PST on every Saturday to check and auto renew ssl certificate from letsencrypt for talkto.app:
+30  9  *  *  6  root /bin/bash /gt/gt-prog-repos/platform/nginxproxy-sd/certbot/command-to-get-certificate-for-talkto.app.sh
+
 

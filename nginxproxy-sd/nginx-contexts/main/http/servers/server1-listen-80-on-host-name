@@ -68,3 +68,73 @@ server {
 
 }
 
+server {
+
+    # 1/7
+    listen 80;
+
+    # 2/7 allowing _ is a risk since on internet people keep probing the ip address with different paths to find vulnerability
+    server_name www.talkto.app talkto.app;
+
+    # 3/7
+    #if ($allowed_country = "no") {
+    #    return 444;
+    #}
+
+    # 4/7 Goal: Not allowing access on public ip address to prevent bots on internet from probing
+    #if ($host != "talkto.app") {
+    #set $directIPAccess "1";
+    #}
+
+    #if ($host != "127.0.0.1") {
+    #set $directIPAccess "${directIPAccess}1";
+    #}
+
+    #if ($host != "local.talkto.app") {
+    #set $directIPAccess "${directIPAccess}1";
+    #}
+
+    #if ( $directIPAccess = "111" ) {
+    #return 444;
+    #}
+
+    # Logs: controlled through parent context main
+
+    # 5/7
+    root /var/www/html;
+
+    # 6/7 this is for letsencrypt
+    location /.well-known {
+        alias /var/www/html/.well-known;
+        allow all;
+        default_type "text/plain";
+        autoindex on;
+    }
+
+    # 7/7
+    # Requirement 1: Force port 80 to https-redirection which will by default go to port 443
+    # Use the following commands to test:
+    # root@9 /g/s/nginxproxy-sd-v1# curl -I www.talkto.app
+    # HTTP/1.1 301 Moved Permanently
+    # Server: nginx/1.10.0 (Ubuntu)
+    # Date: Sun, 05 Feb 2017 22:00:19 GMT
+    # Content-Type: text/html
+    # Content-Length: 194
+    # Connection: keep-alive
+    # Location: https://www.talkto.app/
+
+    # root@9 /g/s/nginxproxy-sd-v1# curl -I talkto.app
+    # HTTP/1.1 301 Moved Permanently
+    # Server: nginx/1.10.0 (Ubuntu)
+    # Date: Sun, 05 Feb 2017 22:00:25 GMT
+    # Content-Type: text/html
+    # Content-Length: 194
+    # Connection: keep-alive
+    # Location: https://talkto.app/
+
+    location / {
+        return 301 https://www.talkto.app$request_uri;
+    }
+
+}
+

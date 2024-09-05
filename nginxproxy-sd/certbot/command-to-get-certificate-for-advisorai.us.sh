@@ -17,9 +17,9 @@ then
 # The following command check expaire date of all ssl certificates and renewed certificates befour due date. ref:https://www.onepagezen.com/letsencrypt-auto-renew-certbot-apache/   
 certbot renew
 
-# Copy the https certificate files to respective domain path where nginx will be read the certificate files. Also include the followng path to nginx.conf file. ref:https://gitlab.com/savantcare/nginxproxy-sd-v1/nginxproxy-sd-v1/blob/master/nginx-contexts/main/http/servers/server3-listen-443-for-advisorai.us
-cp /etc/letsencrypt/live/www.advisorai.us/fullchain.pem /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/
-cp /etc/letsencrypt/live/www.advisorai.us/privkey.pem   /gt/gt-prog-repos/webapp/nginxproxy-sd/https-certificates/advisorai.us/
+# Copy the https certificate files to respective domain path where nginx will be read the certificate files.
+cp /etc/letsencrypt/live/www.advisorai.us/fullchain.pem /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/
+cp /etc/letsencrypt/live/www.advisorai.us/privkey.pem   /gt/gt-prog-repos/platform/nginxproxy-sd/https-certificates/advisorai.us/
 
 
 else
