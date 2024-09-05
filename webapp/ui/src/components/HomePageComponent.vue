@@ -15,7 +15,7 @@
           <el-row class="center-content">
             <el-col :span="24">
               <h1 class="homepage-title">
-                www.talkto.app/<VueTyper
+                talkto.app/<VueTyper
                   :text="dynamicWords"
                   :repeat="Infinity"
                   initial-action="typing"
@@ -32,11 +32,11 @@
           <el-row class="center-content">
             <el-col :span="24">
               <div class="homepage-subtitle">
-                <p style="line-height: 24px;">TalkTo is a platform that allows you to connect with the people you want to talk to.</p>
+                <!-- <p style="line-height: 24px;">TalkTo is a platform that allows you to connect with the people you want to talk to.</p> -->
                 <el-input
                   v-model="userInput"
                   @keyup.enter="handleEnterKey"
-                  placeholder="Type something and press Enter"
+                  placeholder="Who do you want to talk to ?"
                   class="user-input1"
                 />
                 <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
@@ -95,10 +95,12 @@ export default {
     border-radius: 8px
 }
 .homepage-title {
-  line-height: 30px;
-  font-weight: bold;
-  margin: 0;
-  height: 60px;
+    line-height: 30px;
+    font-weight: bold;
+    margin: 0 auto 20px auto;
+    height: 60px;
+    max-width: 475px;
+    text-align: left;
 }
 
 .homepage-subtitle {
@@ -124,7 +126,7 @@ export default {
   text-align: center;
 }
 header img {
-    max-width: 100px;
+    max-height: 50px;
 }
 
 header .auth-links {
