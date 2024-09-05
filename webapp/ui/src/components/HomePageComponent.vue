@@ -36,7 +36,7 @@
                 <el-input
                   v-model="userInput"
                   @keyup.enter="handleEnterKey"
-                  placeholder="Who do you want to talk to ?"
+                  placeholder="Who do you want to talk to?"
                   class="user-input1"
                 />
                 <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
