@@ -41,6 +41,13 @@ import VueSignaturePad from "vue-signature-pad";
 rootVueApp.use(VueSignaturePad);
 
 /**
+ * Install vue-typer
+ */
+import VueTyper from 'vue3-typer'
+import "vue3-typer/dist/vue-typer.css"
+rootVueApp.use(VueTyper)
+
+/**
  * Event bus
  * Ref: https://stackoverflow.com/questions/63471824/vue-js-3-event-bus
  * Where is the event bus is used?
@@ -56,7 +63,7 @@ rootVueApp.config.globalProperties.emitter = emitter;
 if (process.env.NODE_ENV === 'development') {
     rootVueApp.config.globalProperties.baseUrlForApiCall = 'http://localhost:3003/acr/';
 } else {
-    rootVueApp.config.globalProperties.baseUrlForApiCall = 'https://www.advisorai.us/acr/';
+    rootVueApp.config.globalProperties.baseUrlForApiCall = '/acr/';
 }
 
 rootVueApp.mount('#app')

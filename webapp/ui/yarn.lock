@@ -492,6 +492,11 @@ lodash-unified@^1.0.2:
   resolved "https://registry.npmjs.org/lodash-unified/-/lodash-unified-1.0.3.tgz"
   integrity sha512-WK9qSozxXOD7ZJQlpSqOT+om2ZfcT4yO+03FuzAHD0wF6S0l0090LRPDx3vhTTLZ8cFKpBn+IOcVXK6qOcIlfQ==
 
+lodash.split@^4.4.2:
+  version "4.4.2"
+  resolved "https://registry.npmjs.org/lodash.split/-/lodash.split-4.4.2.tgz"
+  integrity sha512-kn1IDX0aHfg0FsnPIyxCHTamZXt3YK3aExRH1LW8YhzP6+sCldTm8+E4aIg+nSmM6R4eqdWGrXWtfYI961bwIw==
+
 lodash@*, lodash@^4.17.21:
   version "4.17.21"
   resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
@@ -743,7 +748,7 @@ vue-signature-pad@^3.0.2:
     merge-images "^1.1.0"
     signature_pad "^3.0.0-beta.3"
 
-vue@^3.0.0, "vue@^3.0.0-0 || ^2.6.0", "vue@^3.0.0-0 || ^2.7.0", vue@^3.2.0, vue@^3.2.25, vue@^3.2.47, "vue@>= 3.0.0 < 4", vue@3.4.37:
+vue@^3.0.0, "vue@^3.0.0-0 || ^2.6.0", "vue@^3.0.0-0 || ^2.7.0", vue@^3.2.0, vue@^3.2.25, vue@^3.2.37, vue@^3.2.47, "vue@>= 3.0.0 < 4", vue@3.4.37:
   version "3.4.37"
   resolved "https://registry.npmjs.org/vue/-/vue-3.4.37.tgz"
   integrity sha512-3vXvNfkKTBsSJ7JP+LyR7GBuwQuckbWvuwAid3xbqK9ppsKt/DUvfqgZ48fgOLEfpy1IacL5f8QhUVl77RaI7A==
@@ -760,3 +765,11 @@ vue3-cookies@^1.0.6:
   integrity sha512-a1UvVD0qIgxyOqjlSOwnLnqAnz8ASltugEv8yX+96i/WGZAN9fEDci7xO4HIWZE1uToUnRq9JnFhvfDCSo45OA==
   dependencies:
     vue "^3.0.0"
+
+vue3-typer@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/vue3-typer/-/vue3-typer-1.0.0.tgz"
+  integrity sha512-XliYAfNxPdu3D2zgiKzzr6I7TJR/Qs4tqmn5RbPxvn8Me3AjAabX90U1oizGlFrH/9qNEsyX0NMyDB0Z/NkqPQ==
+  dependencies:
+    lodash.split "^4.4.2"
+    vue "^3.2.37"

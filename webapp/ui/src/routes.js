@@ -8,6 +8,7 @@ import UserEnhancedReport from './components/stock-picker/UserEnhancedReport.vue
 import SystemReport from './components/stock-picker/SystemReport.vue';
 import DemoPageComponent from './components/DemoPageComponent.vue';
 import PricingComponent from './components/PricingComponent.vue';
+import ConnectWithPeoplePageComponent from './components/ConnectWithPeoplePageComponent.vue';
 
 const routes = [
   {
@@ -16,42 +17,47 @@ const routes = [
     component: HomePageComponent
   },
   {
-    path: '/demo',
+    path: '/:keyword',
+    name: 'ConnectWithPeoplePage',
+    component: ConnectWithPeoplePageComponent
+  },
+  {
+    path: '/get/demo',
     name: 'DemoPage',
     component: DemoPageComponent
   },
   { 
-    path: '/advisor-personality', 
+    path: '/page/advisor-personality', 
     name: 'AdvisorPersonalityPage',
     component: AdvisorPersonalityTabs 
   },
   {
-    path: '/login',
+    path: '/user/login',
     name: 'LoginPage',
     component: LoginCt
   },
   {
-    path: '/reset-password',
+    path: '/user/reset-password',
     name: 'ResetPassword',
     component: ResetPasswordComponent
   },
   {
-    path: '/waitlist',
+    path: '/user/waitlist',
     name: 'JoinWaitlist',
     component: JoinWaitlistComponent
   },
   {
-    path: '/:stock',
+    path: '/stock/:stock',
     name: 'SystemReport',
     component: SystemReport
   },
   {
-    path: '/:stock/discuss/:reportOfUid?',
+    path: '/stock/:stock/discuss/:reportOfUid?',
     name: 'DiscussStockReport',
     component: UserEnhancedReport
   },
   {
-    path: '/pricing',
+    path: '/membership/pricing',
     name: 'Pricing',
     component: PricingComponent
   }
