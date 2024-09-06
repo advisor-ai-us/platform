@@ -17,7 +17,7 @@ import logging
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import fitz
-import stripe
+import stripe, importlib, json
 
 # Add the parent directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -227,6 +227,15 @@ def chat_incoming_message():
 
     elif advisorPersonalityName == 'mental-health-advisor':
         response = handle_incoming_user_message_to_mental_health_advisor(userEmail, message)
+
+    else:
+        advisor_function_name = f"handle_incoming_user_message_to_{advisorPersonalityName.lower().replace('-', '_')}"
+        try:
+            advisor_module = importlib.import_module(f"plugins.{advisorPersonalityName.lower().replace('-', '_')}.utils")
+            advisor_function = getattr(advisor_module, advisor_function_name)
+            response = advisor_function(userEmail, message)
+        except (ImportError, AttributeError):
+            response = 'Advisor not found'
 
     return response
 
@@ -1812,6 +1821,127 @@ def payment_success():
 @app.route('/acr/cancel', methods=['GET'])
 def payment_cancel():
     return render_template('payment_cancel.html')
+
+@app.route('/acr/check_plugin', methods=['POST'])
+def check_plugin():
+    data = request.get_json()
+    email = data.get('email')
+    token = data.get('token')
+    keyword = data.get('plugin')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    # Replace - with _ in plugin name
+    plugin = keyword.replace('-', '_')
+
+    # Check if the plugin folder exists
+    plugin_folder = os.path.join(os.path.dirname(__file__), '..', 'plugins', plugin)
+    system_prompt_file = os.path.join(plugin_folder, 'system_prompt.py')
+    utils_file = os.path.join(plugin_folder, 'utils.py')
+
+    if os.path.exists(plugin_folder) and os.path.exists(system_prompt_file) and os.path.exists(utils_file):
+        return jsonify({"exists": True, "message": "Plugin already exists"}), 200
+    else:
+        # Create plugin folder
+        os.makedirs(plugin_folder, exist_ok=True)
+
+        # Get system prompt content from AI
+        db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+        conn = sqlite3.connect(db_name)
+        c = conn.cursor()
+        c.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (email,))
+        row = c.fetchone()
+        conn.close()
+
+        if row and row[0] and row[1]:
+            apiKey = row[0]
+            model = row[1]
+        else:
+            apiKey = OPENAI_API_KEY
+            model = OPENAI_MODEL
+
+        prompt_data = [
+            { "role": "system", "content": f"Create a system prompt for the {plugin} plugin." },
+            { "role": "user", "content": f"Create a system prompt for the {plugin} plugin." }
+        ]
+
+        response = get_response_from_openai(apiKey, model, prompt_data)
+
+        if response.choices[0].message.content:
+            system_prompt_content = response.choices[0].message.content
+
+            # Ensure the content is properly encoded
+            system_prompt_content = system_prompt_content.encode('ascii', 'ignore').decode('ascii')
+
+            # Create system_prompt.py with the content
+            system_prompt_content = f"# System prompt for {plugin}\n\n{plugin.upper()}_PROMPT = \"\"\"\n{system_prompt_content}\n\"\"\""
+
+            with open(system_prompt_file, 'w', encoding='utf-8') as f:
+                f.write(system_prompt_content)
+
+            # Create utils.py file
+            utils_content = f"""import sqlite3, os, json, re, logging
+from openai import OpenAI
+from flask import jsonify
+from common_utils import *
+from config import *
+from .system_prompt import {plugin.upper()}_PROMPT
+import datetime
+
+def handle_incoming_user_message_to_{plugin}(userEmail, message):
+    text_sent_to_ai_in_the_prompt = [{{"role": "system", "content": {plugin.upper()}_PROMPT}}]
+    text_sent_to_ai_in_the_prompt.append({{"role": "user", "content": message}})
+    
+    advisorPersonalityName = '{keyword}'
+    # get openai apikey and model from user database if available else use the default values
+    db_name1 = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+    
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+    
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+    
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {{response}}")
+        return jsonify({{"error": "An error occurred while processing your request. Please try again later."}}), 500
+
+    if response.choices and response.choices[0].message.content:
+        content = response.choices[0].message.content
+
+        # Ensure responseData is a dictionary before accessing keys
+        prompt_details = text_sent_to_ai_in_the_prompt
+        prompt_details.append({{"role": "response", "content": content}})
+
+        save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+        save_conversation(userEmail, "assistant", content, advisorPersonalityName, prompt_details)
+
+        return {{"response": content, "responseData": content, "prompt_details": json.dumps(prompt_details)}}
+    else:
+        logging.error("Unexpected response format from OpenAI API")
+        return jsonify({{"error": "An unexpected error occurred. Please try again later."}}), 500
+"""
+
+            with open(utils_file, 'w') as f:
+                f.write(utils_content)
+
+            return jsonify({"exists": True, "message": "Plugin folder, system_prompt.py, and utils.py created"}), 201
+
+    return jsonify({"error": "An unexpected error occurred"}), 500
 
 if __name__ == '__main__':
     init_central_coordinator_db()
