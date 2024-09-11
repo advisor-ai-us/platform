@@ -155,7 +155,7 @@ export default {
                     formData.append('profilePhoto', this.profilePhoto);
 
                     // Assuming you have an API endpoint for creator registration
-                    const apiURL = this.baseUrlForApiCall + '/register_creator';
+                    const apiURL = this.baseUrlForApiCall + 'register_creator';
                     axios.post(apiURL, formData, {
                         headers: {
                             'Content-Type': 'multipart/form-data'
