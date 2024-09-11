@@ -15,6 +15,8 @@ def init_central_coordinator_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   email TEXT UNIQUE NOT NULL,
+                  role TEXT DEFAULT 'member',
+                  username TEXT UNIQUE,
                   telegram_username TEXT UNIQUE,
                   whatsapp_number TEXT UNIQUE,
                   phone_number TEXT UNIQUE,
@@ -27,6 +29,25 @@ def init_central_coordinator_db():
                   is_waitlist BOOLEAN DEFAULT FALSE,
                   waiting_for_discount INTEGER DEFAULT 0,
                   created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+    # Create a table to store the creator data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS creators
+             (id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              full_name TEXT NOT NULL,
+              age INTEGER,
+              gender TEXT,
+              education TEXT,
+              occupation TEXT,
+              location TEXT,
+              languages TEXT,
+              profile_photo BLOB,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id))''')
     conn.commit()
     conn.close()
 

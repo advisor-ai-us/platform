@@ -5,6 +5,7 @@
       <div class="auth-links">
         <el-button type="primary" @click="$router.push('/user/login')">Login</el-button>
         <el-button type="success" @click="$router.push('/user/waitlist')">Join Waitlist</el-button>
+        <el-button type="warning" @click="$router.push('/join/creator')">Join as Creator</el-button>
         <el-button type="info" @click="$router.push('/membership/pricing')">Pricing</el-button>
       </div>
     </header>
@@ -46,17 +47,54 @@
         </div>
       </div>
     </div>
+    <div class="container">
+      <div class="section">
+        <div>
+          <el-row class="center-content">
+            <el-col :span="24">
+              <h1 class="homepage-title" style="text-align: center;">Creators</h1>
+            </el-col>
+          </el-row>
+          <!--list all the creators-->
+          <el-row class="creators-section">
+            <div v-for="creator in creators" :key="creator.id" class="creator-card">
+              <el-card>
+                <div>
+                    <el-image
+                      style="width: 100px; height: 100px"
+                      :src="'data:image/png;base64,' + creator.profile_photo"
+                      fit="cover"
+                    ></el-image>
+                  
+                    <h2>{{ creator.full_name }}</h2>
+                    <p>@{{ creator.username }}</p>
+                    <p>{{ creator.occupation }}</p>
+                    <el-button type="primary" @click="$router.push(`/${creator.username}`)" size="small">Chat with {{ creator.full_name }}</el-button>
+                </div>
+              </el-card>
+            </div>
+          </el-row>
+
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script>
+import axios from "axios";
 export default {
   data() {
     return {
       dynamicWords: ["celebrity", "influencer", "coach", "chhota-bheem", "doremon"],
       userInput: "",
-      errorMessage: ""
+      errorMessage: "",
+      creators: [],
     };
+  },
+  mounted() {
+    this.mfToGetCreator();
   },
   methods: {
     handleEnterKey() {
@@ -70,6 +108,16 @@ export default {
         this.errorMessage = "";
         this.$router.push(`/${this.userInput}`);
       }
+    },
+    mfToGetCreator() {
+      const apiURL = this.baseUrlForApiCall + 'creators';
+      axios.get(apiURL)
+        .then(response => {
+          this.creators = response.data;
+        })
+        .catch(error => {
+          console.log(error);
+        });
     }
   }
 };
@@ -134,4 +182,25 @@ header .auth-links {
 }
 
 header {padding: 10px;}
+
+.creator-card {
+    text-align: center;
+    margin: 10px;
+}
+
+.creator-card img.el-image__inner {
+    border-radius: 50%;
+    border: 1px solid #dcdfe6;
+}
+
+.creator-card h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.creator-card p {
+    margin: 5px 0;
+    color: #acafb4;
+    font-size: 0.8rem;
+}
 </style>

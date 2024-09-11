@@ -9,6 +9,7 @@ import SystemReport from './components/stock-picker/SystemReport.vue';
 import DemoPageComponent from './components/DemoPageComponent.vue';
 import PricingComponent from './components/PricingComponent.vue';
 import ConnectWithPeoplePageComponent from './components/ConnectWithPeoplePageComponent.vue';
+import JoinCreaterComponent from './components/JoinCreaterComponent.vue';
 
 const routes = [
   {
@@ -45,6 +46,11 @@ const routes = [
     path: '/user/waitlist',
     name: 'JoinWaitlist',
     component: JoinWaitlistComponent
+  },
+  {
+    path: '/join/creator',
+    name: 'JoinCreaterPage',
+    component: JoinCreaterComponent
   },
   {
     path: '/stock/:stock',

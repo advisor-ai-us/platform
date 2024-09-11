@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-slider
+    <!-- <el-slider
       v-model="sliderValue"
       :min="sliderMinValue"
       :max="sliderMaxValue"
@@ -10,7 +10,7 @@
       tooltip-visible="always"
       @input="filterAssetsByDate"
       :format-tooltip="formatTooltip"
-    ></el-slider>
+    ></el-slider> -->
     
     <el-button type="primary" @click="addAsset" size="small" style="float: right;">Add Asset</el-button>
     <el-table :data="filteredAssets">

@@ -1784,6 +1784,61 @@ def validate_discount_code():
     else:
         return jsonify({"valid": False})
 
+@app.route('/acr/register_creator', methods=['POST'])
+def register_creator():
+    email = request.form.get('email')
+    password = request.form.get('password')
+    fullName = request.form.get('fullName')
+    age = request.form.get('age')
+    gender = request.form.get('gender')
+    education = request.form.get('education')
+    occupation = request.form.get('occupation')
+    location = request.form.get('location')
+    languages = json.loads(request.form.get('languages'))
+    profilePhoto = request.files.get('profilePhoto')
+
+    if not all([email, password, fullName, age, gender, education, occupation, location, languages, profilePhoto]):
+        return jsonify({"error": "All fields are required"}), 400
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    try:
+        # First, create a new user
+        hashed_password = generate_password_hash(password)
+        username = email.split('@')[0] 
+
+        c.execute("SELECT COUNT(*) FROM users WHERE username LIKE ?", (username + '%',))
+        count = c.fetchone()[0]
+        if count > 0:
+            username = f"{username}{count + 1}"
+
+        c.execute("INSERT INTO users (email, role, username, password, full_name, is_waitlist) VALUES (?, ?, ?, ?, ?, ?)", (email, 'creator', username, hashed_password, fullName, False))
+        user_id = c.lastrowid
+
+        # Convert languages list to a comma-separated string
+        languages_str = ','.join(languages)
+
+        # Read and store the profile photo
+        profile_photo_data = profilePhoto.read()
+
+        # Insert creator information
+        c.execute("""
+            INSERT INTO creators (user_id, full_name, age, gender, education, occupation, location, languages, profile_photo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, fullName, age, gender, education, occupation, location, languages_str, profile_photo_data))
+
+        conn.commit()
+        return jsonify({"message": "Creator registered successfully"}), 201
+
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return jsonify({"error": "Email already exists"}), 400
+
+    finally:
+        conn.close()
+
 @app.route('/acr/success', methods=['GET'])
 def payment_success():
     session_id = request.args.get('session_id')
@@ -1942,6 +1997,45 @@ def handle_incoming_user_message_to_{plugin}(userEmail, message):
             return jsonify({"exists": True, "message": "Plugin folder, system_prompt.py, and utils.py created"}), 201
 
     return jsonify({"error": "An unexpected error occurred"}), 500
+
+@app.route('/acr/creators', methods=['GET'])
+def get_creators():
+    # token = request.args.get('token')
+    # email = request.args.get('email')
+
+    # if not decode_token_and_get_email(token) == email:
+    #     return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT c.id, c.full_name, c.age, c.gender, c.education, c.occupation, c.location, c.languages, c.profile_photo, u.username
+        FROM creators c
+        JOIN users u ON c.user_id = u.id
+        WHERE u.is_waitlist = 0
+    """)
+    rows = c.fetchall()
+    conn.close()
+
+    creators = []
+    for row in rows:
+        creator = {
+            "id": row[0],
+            "full_name": row[1],
+            "age": row[2],
+            "gender": row[3],
+            "education": row[4],
+            "occupation": row[5],
+            "location": row[6],
+            "languages": row[7].split(',') if row[7] else [],
+            "profile_photo": base64.b64encode(row[8]).decode('utf-8') if row[8] else None,
+            "username": row[9]
+        }
+        creators.append(creator)
+
+    return jsonify(creators), 200
 
 if __name__ == '__main__':
     init_central_coordinator_db()
