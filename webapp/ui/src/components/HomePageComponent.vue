@@ -52,12 +52,23 @@
         <div>
           <el-row class="center-content">
             <el-col :span="24">
-              <h1 class="homepage-title" style="text-align: center;">Creators</h1>
+              <h1 class="homepage-title" style="text-align: center;height: auto;">Creators</h1>
             </el-col>
           </el-row>
-          <!--list all the creators-->
+          <el-row class="search-creators">
+            <el-col :span="24">
+              <el-input
+                v-model="creatorFilter"
+                placeholder="Search creators"
+                :prefix-icon="Search"
+                clearable
+                @input="filterCreators" 
+                class="search-creators-input"
+              />
+            </el-col>
+          </el-row>
           <el-row class="creators-section">
-            <div v-for="creator in creators" :key="creator.id" class="creator-card">
+            <div v-for="creator in filteredCreators" :key="creator.id" class="creator-card">
               <el-card>
                 <div>
                     <el-image
@@ -82,6 +93,10 @@
   </div>
 </template>
 
+<script setup>
+import { Search } from '@element-plus/icons-vue';
+</script>
+
 <script>
 import axios from "axios";
 export default {
@@ -91,6 +106,8 @@ export default {
       userInput: "",
       errorMessage: "",
       creators: [],
+      creatorFilter: '',
+      filteredCreators: [],
     };
   },
   mounted() {
@@ -114,11 +131,25 @@ export default {
       axios.get(apiURL)
         .then(response => {
           this.creators = response.data;
+          this.filteredCreators = this.creators;
         })
         .catch(error => {
           console.log(error);
         });
-    }
+    },
+    filterCreators() {
+      if (this.creatorFilter) {
+        this.filteredCreators = this.creators.filter(creator =>
+          creator.full_name.toLowerCase().includes(this.creatorFilter.toLowerCase()) ||
+          creator.username.toLowerCase().includes(this.creatorFilter.toLowerCase()) || 
+          creator.education.toLowerCase().includes(this.creatorFilter.toLowerCase()) || 
+          creator.location.toLowerCase().includes(this.creatorFilter.toLowerCase()) || 
+          creator.occupation.toLowerCase().includes(this.creatorFilter.toLowerCase())
+        );
+      } else {
+        this.filteredCreators = this.creators;
+      }
+    },
   }
 };
 </script>

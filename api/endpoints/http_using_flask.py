@@ -813,7 +813,7 @@ def get_conversation():
   db_name = get_user_db(userEmail)
   conn = sqlite3.connect(db_name)
   c = conn.cursor()
-  c.execute("SELECT role, content, prompt_details FROM conversation_history WHERE advisorPersonalityName = ? ORDER BY timestamp", (advisorPersonalityName,))
+  c.execute("SELECT role, content, prompt_details, timestamp FROM conversation_history WHERE advisorPersonalityName = ? ORDER BY timestamp", (advisorPersonalityName,))
   rows = c.fetchall()
   conn.close()
 
@@ -836,7 +836,7 @@ def get_conversation():
   if not rows:
     return jsonify({"conversation": []})
   else:
-    return jsonify({"conversation": [{"role": role, "content": content, "prompt_details": prompt_details} for role, content, prompt_details in rows], "basic_memory": [{"key": key, "value": value} for key, value in rows1], "dashboard": [{"key": key, "value": value} for key, value in rows2]})
+    return jsonify({"conversation": [{"role": role, "content": content, "prompt_details": prompt_details, "timestamp": timestamp} for role, content, prompt_details, timestamp in rows], "basic_memory": [{"key": key, "value": value} for key, value in rows1], "dashboard": [{"key": key, "value": value} for key, value in rows2]})
 
 @app.route('/acr/signup', methods=['GET', 'POST'])
 def signup():
@@ -1920,8 +1920,8 @@ def check_plugin():
             model = OPENAI_MODEL
 
         prompt_data = [
-            { "role": "system", "content": f"Create a system prompt for the {plugin} plugin." },
-            { "role": "user", "content": f"Create a system prompt for the {plugin} plugin." }
+            { "role": "system", "content": f"Create a system prompt for the {plugin}." },
+            { "role": "user", "content": f"Create a system prompt for the {plugin}." }
         ]
 
         response = get_response_from_openai(apiKey, model, prompt_data)

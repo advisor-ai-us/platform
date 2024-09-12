@@ -1,21 +1,19 @@
 <template>
     <div class="homepage-container">
-        <header>
+        <!-- <header>
             <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
-        </header>
-        <div class="container people-talk-page">
-            <h1 v-if="checkingForPlugin">Connecting with {{ keyword }}</h1>
-            <h1 v-else>Connected with {{ keyword }}</h1>
-            <p v-if="checkingForPlugin">Please wait while we connect you with {{ keyword }}...</p>
-            <p v-else>You are now connected to {{ keyword }}. Feel free to start chatting with him!.</p>
+        </header> -->
+        <div class="container people-talk-page" v-if="checkingForPlugin">
+            <h1>Connecting with {{ keyword }}</h1>
+            <p>Please wait while we connect you with {{ keyword }}...</p>
         </div>
-        <ChatComponent v-if="!checkingForPlugin" :systemPrompt="systemPrompt" :advisorPersonalityName="keyword" />
+        <FullPageChatComponent v-else :advisorPersonalityName="keyword" />
     </div>
 </template>
 
 <script>
 import axios from 'axios';
-import ChatComponent from './ChatComponent.vue';
+import FullPageChatComponent from './FullPageChatComponent.vue';
 export default {
     data() {
         return {
@@ -27,7 +25,7 @@ export default {
         };
     },
     components: {
-        ChatComponent
+        FullPageChatComponent
     },
     mounted() {
         this.userEmail = localStorage.getItem('email');
