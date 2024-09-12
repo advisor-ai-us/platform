@@ -294,7 +294,8 @@ export default {
         this.conversationHistory.push({
           content: response.data.response,
           prompt_details: response.data.prompt_details,
-          role: 'assistant'
+          role: 'assistant',
+          timestamp: new Date().toISOString()
         });
 
         this.scrollToBottom();
