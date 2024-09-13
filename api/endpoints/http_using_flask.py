@@ -582,7 +582,7 @@ def handle_incoming_user_message_to_improve_prompt(userEmail, message, advisorPe
         else:
             MsgForUser = "An error occurred. Please try again."
 
-        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
+        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": prompt_details})
     else:
         logging.error("Unexpected response format from OpenAI API")
         return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
