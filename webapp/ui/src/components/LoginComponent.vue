@@ -97,7 +97,12 @@
         axios.post(this.baseUrlForApiCall + 'validate_token', { token })
           .then((response) => {
             if (response.data.valid) {
-              this.$router.push({ name: 'AdvisorPersonalityPage' });
+              //this.$router.push({ name: 'AdvisorPersonalityPage' });
+              if (response.data.role === 'creator') {
+                this.$router.push({ name: 'EditCreatorPage' });
+              } else {
+                this.$router.push({ name: 'AdvisorPersonalityPage' });
+              }
             } else {
               localStorage.removeItem('token');
             }
@@ -123,7 +128,12 @@
                 localStorage.setItem('fullName', response.data.fullName);
 
                 // Go to dashboard with page reload
-                this.$router.push({ name: 'AdvisorPersonalityPage' });
+                //this.$router.push({ name: 'AdvisorPersonalityPage' });
+                if (response.data.role === 'creator') {
+                  this.$router.push({ name: 'EditCreatorPage' });
+                } else {
+                  this.$router.push({ name: 'AdvisorPersonalityPage' });
+                }
               })
               .catch((error) => {
                 console.error(error);

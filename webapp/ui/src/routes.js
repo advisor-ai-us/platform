@@ -10,6 +10,7 @@ import DemoPageComponent from './components/DemoPageComponent.vue';
 import PricingComponent from './components/PricingComponent.vue';
 import ConnectWithPeoplePageComponent from './components/ConnectWithPeoplePageComponent.vue';
 import JoinCreaterComponent from './components/JoinCreaterComponent.vue';
+import EditCreatorProfileComponent from './components/EditCreatorProfileComponent.vue';
 
 const routes = [
   {
@@ -51,6 +52,11 @@ const routes = [
     path: '/join/creator',
     name: 'JoinCreaterPage',
     component: JoinCreaterComponent
+  },
+  {
+    path: '/creator/edit',
+    name: 'EditCreatorPage',
+    component: EditCreatorProfileComponent
   },
   {
     path: '/stock/:stock',

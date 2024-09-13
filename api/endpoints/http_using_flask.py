@@ -34,7 +34,8 @@ from system_prompts import (
     PORTFOLIO_PERFORMANCE_PROMPT,
     DASHBOARD_PROMPT,
     STOCK_PICKER_DISCUSSION,
-    STOCK_PICKER_SYSTEM_REPORT
+    STOCK_PICKER_SYSTEM_REPORT,
+    IMPROVE_CREATOR_PROMPT
 )
 
 app = Flask(__name__)
@@ -227,6 +228,9 @@ def chat_incoming_message():
 
     elif advisorPersonalityName == 'mental-health-advisor':
         response = handle_incoming_user_message_to_mental_health_advisor(userEmail, message)
+
+    elif advisorPersonalityName == 'improve-prompt':
+        response = handle_incoming_user_message_to_improve_prompt(userEmail, message, advisorPersonalityName)
 
     else:
         advisor_function_name = f"handle_incoming_user_message_to_{advisorPersonalityName.lower().replace('-', '_')}"
@@ -484,6 +488,121 @@ def ai_request_stock_picker_system_report(userEmail, message, advisorPersonality
             MsgForUser = "An error occurred. Please try again."
 
         return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
+
+def handle_incoming_user_message_to_improve_prompt(userEmail, message, advisorPersonalityName):
+    systemPrompt = IMPROVE_CREATOR_PROMPT
+
+    # Get creator information from the database
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("""
+        SELECT c.full_name, c.age, c.gender, c.education, c.occupation, c.location, c.languages
+        FROM creators c
+        JOIN users u ON c.user_id = u.id
+        WHERE u.email = ?
+    """, (userEmail,))
+    creator_info = c.fetchone()
+    conn.close()
+
+    if creator_info:
+        user_details = f"Name: {creator_info[0]},\nAge: {creator_info[1]},\nGender: {creator_info[2]},\nEducation: {creator_info[3]},\nOccupation: {creator_info[4]},\nLocation: {creator_info[5]},\nLanguages: {creator_info[6]}"
+    else:
+        user_details = "No creator information available."
+
+    # Get memory data from the user's database
+    db_name = get_user_db(userEmail)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT key, value FROM basic_memory")
+    memory_rows = c.fetchall()
+    conn.close()
+
+    if memory_rows:
+        memory_data = "\n".join([f"Question: {key}\nAnswer: {value}" for key, value in memory_rows])
+    else:
+        memory_data = "There is no memory data available."
+
+    # Replace placeholders in the system prompt
+    systemPrompt = systemPrompt.replace("[USER_DETAILS]", user_details)
+    systemPrompt = systemPrompt.replace("[MEMORY]", memory_data)
+
+    # Get OpenAI API key and model
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row = c.fetchone()
+    conn.close()
+
+    if row and row[0] and row[1]:
+        apiKey = row[0]
+        model = row[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+
+    text_sent_to_ai_in_the_prompt = [{"role": "system", "content": systemPrompt}]
+    text_sent_to_ai_in_the_prompt.append({"role": "user", "content": message})
+
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {response}")
+        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+
+    if response.choices and response.choices[0].message.content:
+        content = response.choices[0].message.content
+        responseData = extract_json_from_text(content)
+
+        if not responseData:
+            logging.error("JSON part not found or error parsing JSON in the response")
+            responseData = {"MsgForUser": content}
+
+        prompt_details = text_sent_to_ai_in_the_prompt
+        if isinstance(responseData, dict):
+            MsgForUser = responseData.get('MsgForUser', 'An error occurred. Please try again.')
+            if MsgForUser != "An error occurred. Please try again.":
+                prompt_details.append({"role": "response", "content": content})
+
+                save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+                save_conversation(userEmail, "assistant", MsgForUser, advisorPersonalityName, prompt_details)
+
+                # Save memory if provided in the response
+                memory = responseData.get('memory')
+                if memory:
+                    save_memory_for_creator(userEmail, memory)
+
+                # Save system prompt if provided in the response
+                systemPrompt = responseData.get('systemPrompt')
+                if systemPrompt and systemPrompt != 'none':
+                    save_system_prompt(userEmail, systemPrompt)
+
+        else:
+            MsgForUser = "An error occurred. Please try again."
+
+        return jsonify({"response": MsgForUser, "responseData": content, "model": model, "prompt_details": json.dumps(prompt_details)})
+    else:
+        logging.error("Unexpected response format from OpenAI API")
+        return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
+
+def save_memory_for_creator(email, memory):
+    db_name = get_user_db(email)
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    if memory.get('answer'):
+        c.execute("SELECT 1 FROM basic_memory WHERE key = ?", (memory.get('question'),))
+        exists = c.fetchone()
+
+        if exists:
+            c.execute("UPDATE basic_memory SET value = ? WHERE key = ?", (memory.get('answer'), memory.get('question')))
+        else:
+            c.execute("INSERT INTO basic_memory (key, value) VALUES (?, ?)", (memory.get('question'), memory.get('answer')))
+
+    conn.commit()
+    conn.close()
 
 def save_stock_report_data(email, stock, recommendation, justification, discount_rate, net_present_value, comparison, graph_data_x_axis, graph_data_y_axis):
     db_name = get_user_db(email)
@@ -987,7 +1106,7 @@ def login():
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute("SELECT password, full_name, is_waitlist FROM users WHERE email = ?", (userEmail,))
+    c.execute("SELECT password, full_name, is_waitlist, role FROM users WHERE email = ?", (userEmail,))
     row = c.fetchone()
     conn.close()
 
@@ -1001,7 +1120,7 @@ def login():
             'exp': time.time() + 86400  # 24 hours expiration
         }
         token = generate_token(payload, secret_key)
-        return jsonify({"message": "Login successful", "token": token, "fullName": row[1], "userEmail": userEmail}), 200
+        return jsonify({"message": "Login successful", "token": token, "fullName": row[1], "userEmail": userEmail, "role": row[3]}), 200
     else:
         return jsonify({"error": "Invalid email or password"}), 401
 
@@ -1052,12 +1171,12 @@ def validate_token():
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
 
-        c.execute("SELECT full_name FROM users WHERE email = ?", (userEmail,))
+        c.execute("SELECT full_name, role FROM users WHERE email = ?", (userEmail,))
         row = c.fetchone()
         conn.close()
 
         if row:
-            return jsonify({"userEmail": userEmail, "fullName": row[0], "valid": True}), 200
+            return jsonify({"userEmail": userEmail, "fullName": row[0], "valid": True, "role": row[1]}), 200
         else:
             return jsonify({"error": "User not found", "valid": False}), 404
     else:
@@ -1877,6 +1996,95 @@ def payment_success():
 def payment_cancel():
     return render_template('payment_cancel.html')
 
+def save_system_prompt(email, system_prompt_content):
+    # get username from email
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+
+    plugin = row[0]
+
+    # Create plugin folder
+    plugin_folder = os.path.join(os.path.dirname(__file__), '..', 'plugins', plugin)
+    system_prompt_file = os.path.join(plugin_folder, 'system_prompt.py')
+    utils_file = os.path.join(plugin_folder, 'utils.py')
+
+    # Create plugin folder if it doesn't exist
+    os.makedirs(plugin_folder, exist_ok=True)
+
+    system_prompt_content = system_prompt_content.encode('ascii', 'ignore').decode('ascii')
+
+    # Create system_prompt.py with the content
+    system_prompt_content = f"# System prompt for {plugin}\n\n{plugin.upper()}_PROMPT = \"\"\"\n{system_prompt_content}\n\"\"\""
+
+    with open(system_prompt_file, 'w', encoding='utf-8') as f:
+        f.write(system_prompt_content)
+
+    create_plugin_files_if_not_exist(utils_file, plugin, plugin)
+
+def create_plugin_files_if_not_exist(utils_file, plugin, keyword):
+    # Create utils.py file
+    utils_content = f"""import sqlite3, os, json, re, logging
+from openai import OpenAI
+from flask import jsonify
+from common_utils import *
+from config import *
+from .system_prompt import {plugin.upper()}_PROMPT
+import datetime
+
+def handle_incoming_user_message_to_{plugin}(userEmail, message):
+    text_sent_to_ai_in_the_prompt = [{{"role": "system", "content": {plugin.upper()}_PROMPT}}]
+    text_sent_to_ai_in_the_prompt.append({{"role": "user", "content": message}})
+    
+    advisorPersonalityName = '{keyword}'
+    # get openai apikey and model from user database if available else use the default values
+    db_name1 = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn1 = sqlite3.connect(db_name1)
+    c1 = conn1.cursor()
+    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
+    row1 = c1.fetchone()
+    conn1.close()
+    
+    # if openai apikey and model are available in the database use them else use the default values
+    if row1 and row1[0] and row1[1]:
+        apiKey = row1[0]
+        model = row1[1]
+    else:
+        apiKey = OPENAI_API_KEY
+        model = OPENAI_MODEL
+    
+    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
+    
+    if isinstance(response, str):
+        # This means an error occurred
+        logging.error(f"Error in OpenAI API call: {{response}}")
+        return jsonify({{"error": "An error occurred while processing your request. Please try again later."}}), 500
+
+    if response.choices and response.choices[0].message.content:
+        content = response.choices[0].message.content
+
+        # Ensure responseData is a dictionary before accessing keys
+        prompt_details = text_sent_to_ai_in_the_prompt
+        prompt_details.append({{"role": "response", "content": content}})
+
+        save_conversation(userEmail, "user", message, advisorPersonalityName, None)
+        save_conversation(userEmail, "assistant", content, advisorPersonalityName, prompt_details)
+
+        return {{"response": content, "responseData": content, "prompt_details": json.dumps(prompt_details)}}
+    else:
+        logging.error("Unexpected response format from OpenAI API")
+        return jsonify({{"error": "An unexpected error occurred. Please try again later."}}), 500
+"""
+
+    with open(utils_file, 'w') as f:
+        f.write(utils_content)
+
 @app.route('/acr/check_plugin', methods=['POST'])
 def check_plugin():
     data = request.get_json()
@@ -1939,60 +2147,7 @@ def check_plugin():
                 f.write(system_prompt_content)
 
             # Create utils.py file
-            utils_content = f"""import sqlite3, os, json, re, logging
-from openai import OpenAI
-from flask import jsonify
-from common_utils import *
-from config import *
-from .system_prompt import {plugin.upper()}_PROMPT
-import datetime
-
-def handle_incoming_user_message_to_{plugin}(userEmail, message):
-    text_sent_to_ai_in_the_prompt = [{{"role": "system", "content": {plugin.upper()}_PROMPT}}]
-    text_sent_to_ai_in_the_prompt.append({{"role": "user", "content": message}})
-    
-    advisorPersonalityName = '{keyword}'
-    # get openai apikey and model from user database if available else use the default values
-    db_name1 = os.path.join(DATABASE_PATH, "central-coordinator.db")
-    conn1 = sqlite3.connect(db_name1)
-    c1 = conn1.cursor()
-    c1.execute("SELECT openai_api_key, openai_model FROM users WHERE email = ?", (userEmail,))
-    row1 = c1.fetchone()
-    conn1.close()
-    
-    # if openai apikey and model are available in the database use them else use the default values
-    if row1 and row1[0] and row1[1]:
-        apiKey = row1[0]
-        model = row1[1]
-    else:
-        apiKey = OPENAI_API_KEY
-        model = OPENAI_MODEL
-    
-    response = get_response_from_openai(apiKey, model, text_sent_to_ai_in_the_prompt)
-    
-    if isinstance(response, str):
-        # This means an error occurred
-        logging.error(f"Error in OpenAI API call: {{response}}")
-        return jsonify({{"error": "An error occurred while processing your request. Please try again later."}}), 500
-
-    if response.choices and response.choices[0].message.content:
-        content = response.choices[0].message.content
-
-        # Ensure responseData is a dictionary before accessing keys
-        prompt_details = text_sent_to_ai_in_the_prompt
-        prompt_details.append({{"role": "response", "content": content}})
-
-        save_conversation(userEmail, "user", message, advisorPersonalityName, None)
-        save_conversation(userEmail, "assistant", content, advisorPersonalityName, prompt_details)
-
-        return {{"response": content, "responseData": content, "prompt_details": json.dumps(prompt_details)}}
-    else:
-        logging.error("Unexpected response format from OpenAI API")
-        return jsonify({{"error": "An unexpected error occurred. Please try again later."}}), 500
-"""
-
-            with open(utils_file, 'w') as f:
-                f.write(utils_content)
+            create_plugin_files_if_not_exist(utils_file, plugin, keyword)
 
             return jsonify({"exists": True, "message": "Plugin folder, system_prompt.py, and utils.py created"}), 201
 
@@ -2036,6 +2191,106 @@ def get_creators():
         creators.append(creator)
 
     return jsonify(creators), 200
+
+@app.route('/acr/get_creator_profile', methods=['GET'])
+def get_creator_profile():
+    email = request.args.get('email')
+    token = request.args.get('token')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT c.id, c.full_name, c.age, c.gender, c.education, c.occupation, c.location, c.languages, c.profile_photo, u.username
+        FROM creators c
+        JOIN users u ON c.user_id = u.id
+        WHERE u.is_waitlist = 0 AND u.email = ?
+    """, (email,))
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Creator not found"}), 404
+
+    creator = {
+        "id": row[0],
+        "full_name": row[1],
+        "email": email,
+        "age": row[2],
+        "gender": row[3],
+        "education": row[4],
+        "occupation": row[5],
+        "location": row[6],
+        "languages": row[7].split(',') if row[7] else [],
+        "profile_photo": base64.b64encode(row[8]).decode('utf-8') if row[8] else None,
+        "username": row[9]
+    }
+
+    return jsonify(creator), 200    
+
+@app.route('/acr/update_creator_profile', methods=['POST'])
+def update_creator_profile():
+    email = request.form.get('email')
+    token = request.form.get('token')
+    fullName = request.form.get('fullName')
+    age = request.form.get('age')
+    gender = request.form.get('gender')
+    education = request.form.get('education')
+    occupation = request.form.get('occupation')
+    location = request.form.get('location')
+    languages = json.loads(request.form.get('languages'))
+    profilePhoto = request.files.get('profilePhoto')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    try:
+        c.execute("SELECT id FROM users WHERE email = ?", (email,))
+        user_id = c.fetchone()[0]
+
+        # Convert languages list to a comma-separated string
+        languages_str = ','.join(languages)
+
+        # Prepare the update query and parameters
+        update_query = """
+            UPDATE creators 
+            SET full_name = ?, age = ?, gender = ?, education = ?, 
+                occupation = ?, location = ?, languages = ?
+            WHERE user_id = ?
+        """
+        update_params = (fullName, age, gender, education, occupation, location, languages_str, user_id)
+
+        # If profilePhoto is provided, update it
+        if profilePhoto:
+            profile_photo_data = profilePhoto.read()
+            update_query = update_query.replace("WHERE user_id = ?", ", profile_photo = ? WHERE user_id = ?")
+            update_params = update_params[:-1] + (profile_photo_data,) + (user_id,)
+
+        c.execute(update_query, update_params)
+        conn.commit()
+
+        return jsonify({"message": "Creator profile updated successfully"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     init_central_coordinator_db()
