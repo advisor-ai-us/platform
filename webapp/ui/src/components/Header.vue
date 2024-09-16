@@ -1,7 +1,9 @@
 <template>
     <el-row class="advisorai-header">
         <el-col class="advisorai-header__title" :span="20">
-            <h1>TalkTo AI</h1>
+            <el-link href="/" :underline="false">
+                <h1>TalkTo AI</h1>
+            </el-link>
         </el-col>
         <el-col class="advisorai-header__user" :span="4">
             <el-dropdown @command="handleUserDropdownCommand" style="float: right; margin: 7px 10px 0 0;">

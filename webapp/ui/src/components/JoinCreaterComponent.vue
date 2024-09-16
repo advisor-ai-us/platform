@@ -1,74 +1,92 @@
 <template>
-    <div>
-        <header class="logo-in-header">
-            <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
-            <!-- <h1>Get Started Now</h1>
-            <p>An AI Powered Collaborative Investment Analysis</p> -->
-        </header>
-        <el-card class="join-creator-card">
-            <template #header>
-                <div class="card-header">
-                    <h2 style="margin: 0;">Join as a Creater</h2>
+    <div class="homepage-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-title">
+                <el-link href="/" :underline="false">
+                    <img src="/logo.png" alt="TalkTo Logo" class="logo">
+                    <h1 class="site-title">TalkTo</h1>
+                </el-link>
                 </div>
-            </template>
-            
-            <el-form :model="createrForm" :rules="createrRules" ref="createrForm" label-position="top" @submit.native.prevent="handleCreaterForm" :inline="true">
-                <el-form-item label="Full Name" prop="fullName">
-                    <el-input v-model="createrForm.fullName" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Email" prop="email">
-                    <el-input v-model="createrForm.email" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Password" prop="password">
-                    <el-input v-model="createrForm.password" type="password" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Age" prop="age">
-                    <el-input v-model="createrForm.age" autocomplete="off"></el-input>
-                </el-form-item>                
-                <el-form-item label="Gender" prop="gender">
-                    <el-select v-model="createrForm.gender" placeholder="Select gender">
-                        <el-option label="Male" value="male"></el-option>
-                        <el-option label="Female" value="female"></el-option>
-                    </el-select>
-                </el-form-item>
-                <el-form-item label="Education" prop="education">
-                    <el-input v-model="createrForm.education" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Occupation" prop="occupation">
-                    <el-input v-model="createrForm.occupation" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Location" prop="location">
-                    <el-input v-model="createrForm.location" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item label="Languages" prop="languages">
-                    <el-checkbox-group v-model="createrForm.languages">
-                        <el-checkbox label="English" value="English"></el-checkbox>
-                        <el-checkbox label="Spanish" value="Spanish"></el-checkbox>
-                        <el-checkbox label="French" value="French"></el-checkbox>
-                        <el-checkbox label="German" value="German"></el-checkbox>
-                        <el-checkbox label="Chinese" value="Chinese"></el-checkbox>
-                        <el-checkbox label="Japanese" value="Japanese"></el-checkbox>
-                        <el-checkbox label="Other" value="Other"></el-checkbox>
-                    </el-checkbox-group>
-                </el-form-item>
-                <el-form-item label="Profile Photo" prop="profilePhoto">
-                    <el-upload
-                        class="avatar-uploader"
-                        action="#"
-                        :auto-upload="false"
-                        :on-change="handlePhotoChange"
-                        :show-file-list="false">
-                        <img v-if="imageUrl" :src="imageUrl" class="avatar">
-                        <el-icon v-else class="avatar-uploader-icon">
-                            <Plus />
-                        </el-icon>
-                    </el-upload>
-                </el-form-item>
-                <el-form-item style="margin: 0;width: 100%;">
-                    <el-button type="primary" native-type="submit">Join as Creater</el-button>
-                </el-form-item>
-            </el-form>
-        </el-card>
+                <nav class="nav-links">
+                    <el-button type="primary" @click="$router.push('/user/login')">Login</el-button>
+                    <el-button type="success" @click="$router.push('/user/waitlist')">Join Waitlist</el-button>
+                    <el-button type="info" @click="$router.push('/membership/pricing')">Pricing</el-button>
+                </nav>
+            </div>
+        </header>
+        <main class="main-content">
+            <el-card class="join-creator-card">
+                <template #header>
+                    <div class="card-header">
+                        <h2 style="margin: 0;">Join as a Creater</h2>
+                    </div>
+                </template>
+                
+                <el-form :model="createrForm" :rules="createrRules" ref="createrForm" label-position="top" @submit.native.prevent="handleCreaterForm" :inline="true">
+                    <el-form-item label="Full Name" prop="fullName">
+                        <el-input v-model="createrForm.fullName" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Email" prop="email">
+                        <el-input v-model="createrForm.email" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Password" prop="password">
+                        <el-input v-model="createrForm.password" type="password" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Age" prop="age">
+                        <el-input v-model="createrForm.age" autocomplete="off"></el-input>
+                    </el-form-item>                
+                    <el-form-item label="Gender" prop="gender">
+                        <el-select v-model="createrForm.gender" placeholder="Select gender">
+                            <el-option label="Male" value="male"></el-option>
+                            <el-option label="Female" value="female"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="Education" prop="education">
+                        <el-input v-model="createrForm.education" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Occupation" prop="occupation">
+                        <el-input v-model="createrForm.occupation" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Location" prop="location">
+                        <el-input v-model="createrForm.location" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="Languages" prop="languages">
+                        <el-checkbox-group v-model="createrForm.languages">
+                            <el-checkbox label="English" value="English"></el-checkbox>
+                            <el-checkbox label="Spanish" value="Spanish"></el-checkbox>
+                            <el-checkbox label="French" value="French"></el-checkbox>
+                            <el-checkbox label="German" value="German"></el-checkbox>
+                            <el-checkbox label="Chinese" value="Chinese"></el-checkbox>
+                            <el-checkbox label="Japanese" value="Japanese"></el-checkbox>
+                            <el-checkbox label="Other" value="Other"></el-checkbox>
+                        </el-checkbox-group>
+                    </el-form-item>
+                    <el-form-item label="Profile Photo" prop="profilePhoto">
+                        <el-upload
+                            class="avatar-uploader"
+                            action="#"
+                            :auto-upload="false"
+                            :on-change="handlePhotoChange"
+                            :show-file-list="false">
+                            <img v-if="imageUrl" :src="imageUrl" class="avatar">
+                            <el-icon v-else class="avatar-uploader-icon">
+                                <Plus />
+                            </el-icon>
+                        </el-upload>
+                    </el-form-item>
+                    <el-form-item style="margin: 0;width: 100%;">
+                        <el-button type="primary" native-type="submit">Join as Creater</el-button>
+                    </el-form-item>
+                </el-form>
+                <p class="login-link">
+                    Already have an account? <el-button type="primary" link @click="$router.push('/user/login')">Sign in</el-button>
+                </p>
+            </el-card>
+        </main>
+        <footer class="footer">
+            <p>&copy; 2024 TalkTo AI. All rights reserved.</p>
+        </footer>
     </div>
 </template>
 
@@ -229,5 +247,9 @@ i.el-icon.avatar-uploader-icon {
     width: 80px;
     height: 80px;
     display: block;
+}
+.login-link {
+    text-align: center;
+    margin-top: 20px;
 }
 </style>

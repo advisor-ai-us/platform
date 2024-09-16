@@ -1,54 +1,75 @@
 <template>
-  <div>
-    <header class="logo-in-header">
-      <a href="/"><img src="/logo.png" alt="Advisor AI Logo"></a>
-      <!-- <h1>Get Started Now</h1>
-      <p>An AI Powered Collaborative Investment Analysis</p> -->
+  <div class="homepage-container">
+    <header class="header">
+      <div class="header-content">
+        <div class="logo-title">
+          <el-link href="/" :underline="false">
+            <img src="/logo.png" alt="TalkTo Logo" class="logo">
+            <h1 class="site-title">TalkTo</h1>
+          </el-link>
+        </div>
+        <nav class="nav-links">
+          <el-button type="primary" @click="$router.push('/user/login')">Login</el-button>
+          <el-button type="warning" @click="$router.push('/join/creator')">Join as Creator</el-button>
+          <el-button type="info" @click="$router.push('/membership/pricing')">Pricing</el-button>
+        </nav>
+      </div>
     </header>
-  
-    <el-card class="join-waitlist-card">
-      <h2 style="margin-top: 0;">Join the Waitlist</h2>
-      <el-form :model="waitlistForm" @submit.native.prevent="handleJoinWaitlist" ref="waitlistForm" :rules="waitlistRules" label-position="top">
-        <!-- Existing Fields -->
-        <el-form-item label="Full Name" prop="fullName">
-          <el-input v-model="waitlistForm.fullName" autocomplete="off"></el-input>
-        </el-form-item>
-        <el-form-item label="Email" prop="email">
-          <el-input v-model="waitlistForm.email" autocomplete="off"></el-input>
-        </el-form-item>
-        <el-form-item label="Password" prop="password">
-          <el-input v-model="waitlistForm.password" type="password" autocomplete="off"></el-input>
-        </el-form-item>
-        <!-- <el-form-item label="About Yourself" prop="aboutYourself">
-          <el-input type="textarea" v-model="waitlistForm.aboutYourself" :rows="2" placeholder="Tell us about yourself..."></el-input>
-        </el-form-item>
-        <el-form-item label="Biggest Problem to Solve" prop="biggestProblem">
-          <el-input type="textarea" v-model="waitlistForm.biggestProblem" :rows="2" placeholder="What's the biggest problem you hope to solve with an AI Finance analyst?"></el-input>
-        </el-form-item> -->
-        <el-form-item label="Discount code">
-          <el-input v-model="waitlistForm.discountCode" autocomplete="off" @keyup.enter="handleDiscountCode" @blur="handleDiscountCode" :disabled="discountCodeValid === 'valid'" @input="discountCodeValid = ''"></el-input>
+    <main class="main-content">
+      <el-card class="join-waitlist-card">
+        <template #header>
+          <div class="card-header">
+            <h2 class="login-title">Join the Waitlist</h2>
+          </div>
+        </template>
+        <el-form :model="waitlistForm" @submit.native.prevent="handleJoinWaitlist" ref="waitlistForm" :rules="waitlistRules" label-position="top">
+          <!-- Existing Fields -->
+          <el-form-item label="Full Name" prop="fullName">
+            <el-input v-model="waitlistForm.fullName" autocomplete="off"></el-input>
+          </el-form-item>
+          <el-form-item label="Email" prop="email">
+            <el-input v-model="waitlistForm.email" autocomplete="off"></el-input>
+          </el-form-item>
+          <el-form-item label="Password" prop="password">
+            <el-input v-model="waitlistForm.password" type="password" autocomplete="off"></el-input>
+          </el-form-item>
+          <!-- <el-form-item label="About Yourself" prop="aboutYourself">
+            <el-input type="textarea" v-model="waitlistForm.aboutYourself" :rows="2" placeholder="Tell us about yourself..."></el-input>
+          </el-form-item>
+          <el-form-item label="Biggest Problem to Solve" prop="biggestProblem">
+            <el-input type="textarea" v-model="waitlistForm.biggestProblem" :rows="2" placeholder="What's the biggest problem you hope to solve with an AI Finance analyst?"></el-input>
+          </el-form-item> -->
+          <el-form-item label="Discount code">
+            <el-input v-model="waitlistForm.discountCode" autocomplete="off" @keyup.enter="handleDiscountCode" @blur="handleDiscountCode" :disabled="discountCodeValid === 'valid'" @input="discountCodeValid = ''"></el-input>
 
-          <span v-if="discountCodeValid === 'valid'" style="color: green;line-height: 14px;font-style: italic;font-size: small;">
-            <el-icon style="vertical-align: bottom;"><Select /></el-icon>
-            Discount code is valid
-          </span>
-          <span v-else-if="discountCodeValid === 'invalid'" style="color: red;line-height: 14px;font-style: italic;font-size: small;">
-            <el-icon style="vertical-align: bottom;"><CloseBold /></el-icon>
-            Discount code is invalid
-          </span>
+            <span v-if="discountCodeValid === 'valid'" style="color: green;line-height: 14px;font-style: italic;font-size: small;">
+              <el-icon style="vertical-align: bottom;"><Select /></el-icon>
+              Discount code is valid
+            </span>
+            <span v-else-if="discountCodeValid === 'invalid'" style="color: red;line-height: 14px;font-style: italic;font-size: small;">
+              <el-icon style="vertical-align: bottom;"><CloseBold /></el-icon>
+              Discount code is invalid
+            </span>
 
-        </el-form-item>
+          </el-form-item>
 
-        <!-- Credit Card Information -->
-        <el-form-item label="Card Information" class="card-element">
-          <div id="card-element" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;"></div>
-        </el-form-item>
+          <!-- Credit Card Information -->
+          <el-form-item label="Card Information" class="card-element">
+            <div id="card-element" style="padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px;"></div>
+          </el-form-item>
 
-        <el-form-item>
-          <el-button type="primary" native-type="submit">Join Waitlist</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <el-form-item>
+            <el-button type="primary" native-type="submit">Join Waitlist</el-button>
+          </el-form-item>
+        </el-form>
+        <p class="login-link">
+          Already have an account? <el-button type="primary" link @click="$router.push('/user/login')">Sign in</el-button>
+        </p>
+      </el-card>
+    </main>
+    <footer class="footer">
+      <p>&copy; 2024 TalkTo AI. All rights reserved.</p>
+    </footer>
   </div>
 </template>
 
@@ -210,5 +231,9 @@ export default {
 }
 .card-element .el-form-item__content {
     display: block;
+}
+.login-link {
+  text-align: center;
+  margin-top: 20px;
 }
 </style>
