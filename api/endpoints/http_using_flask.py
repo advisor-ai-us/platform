@@ -511,21 +511,34 @@ def handle_incoming_user_message_to_improve_prompt(userEmail, message, advisorPe
         user_details = "No creator information available."
 
     # Get memory data from the user's database
+    # db_name = get_user_db(userEmail)
+    # conn = sqlite3.connect(db_name)
+    # c = conn.cursor()
+    # c.execute("SELECT key, value FROM basic_memory")
+    # memory_rows = c.fetchall()
+    # conn.close()
+
+    # if memory_rows:
+    #     memory_data = "\n".join([f"Question: {key}\nAnswer: {value}" for key, value in memory_rows])
+    # else:
+    #     memory_data = "There is no memory data available."
+
+    # Get conversation history from the user's database
     db_name = get_user_db(userEmail)
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
-    c.execute("SELECT key, value FROM basic_memory")
-    memory_rows = c.fetchall()
+    c.execute("SELECT role, content FROM conversation_history WHERE advisorPersonalityName = ? ORDER BY timestamp ASC", (advisorPersonalityName,))
+    conversation_rows = c.fetchall()
     conn.close()
 
-    if memory_rows:
-        memory_data = "\n".join([f"Question: {key}\nAnswer: {value}" for key, value in memory_rows])
+    if conversation_rows:
+        conversation_history = "\n".join([f"{row[0]}: {row[1]}" for row in conversation_rows])
     else:
-        memory_data = "There is no memory data available."
-
+        conversation_history = "There is no conversation history available."
+    
     # Replace placeholders in the system prompt
     systemPrompt = systemPrompt.replace("[USER_DETAILS]", user_details)
-    systemPrompt = systemPrompt.replace("[MEMORY]", memory_data)
+    systemPrompt = systemPrompt.replace("[CONVERSATION_HISTORY]", conversation_history)
 
     # Get OpenAI API key and model
     db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
@@ -550,7 +563,7 @@ def handle_incoming_user_message_to_improve_prompt(userEmail, message, advisorPe
     if isinstance(response, str):
         # This means an error occurred
         logging.error(f"Error in OpenAI API call: {response}")
-        return jsonify({"error": "An error occurred while processing your request. Please try again later."}), 500
+        return jsonify({f"error": "An error occurred while processing your request. Please try again later. {response}"}), 500
 
     if response.choices and response.choices[0].message.content:
         content = response.choices[0].message.content
