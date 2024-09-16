@@ -30,7 +30,7 @@ export default {
     mounted() {
         this.userEmail = localStorage.getItem('email');
         this.token = localStorage.getItem('token');
-        if (!this.userEmail) {
+        if (!this.userEmail || !this.token) {
             this.$router.push({ name: 'LoginPage' });
         }   
 
@@ -48,6 +48,9 @@ export default {
             }).then((response) => {
                 if(response.data.exists) {
                     this.checkingForPlugin = false;
+                } else {
+                    // go to the login page
+                    this.$router.push({ name: 'LoginPage' });
                 }
             }).catch((error) => {
                 console.log(error);
@@ -60,6 +63,7 @@ export default {
 <style>
 .people-talk-page {
     text-align: center;
+    margin: 50px auto;
 }
 .people-talk-page h1 {
     margin-top: 0;
