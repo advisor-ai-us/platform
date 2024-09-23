@@ -11,6 +11,7 @@ import PricingComponent from './components/PricingComponent.vue';
 import ConnectWithPeoplePageComponent from './components/ConnectWithPeoplePageComponent.vue';
 import JoinCreaterComponent from './components/JoinCreaterComponent.vue';
 import EditCreatorProfileComponent from './components/EditCreatorProfileComponent.vue';
+import CreatorsChatRoomComponent from './components/CreatorsChatRoomComponent.vue';
 
 const routes = [
   {
@@ -22,6 +23,11 @@ const routes = [
     path: '/:keyword',
     name: 'ConnectWithPeoplePage',
     component: ConnectWithPeoplePageComponent
+  },
+  {
+    path: '/creators/chat-room/:chatRoomId?',
+    name: 'CreatorsChatRoom',
+    component: CreatorsChatRoomComponent
   },
   {
     path: '/get/demo',

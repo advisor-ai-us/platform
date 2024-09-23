@@ -2305,6 +2305,112 @@ def update_creator_profile():
     finally:
         conn.close()
 
+@app.route('/acr/get_clients', methods=['GET'])
+def get_clients():
+    email = request.args.get('userEmail')
+    token = request.args.get('token')
+
+    if not email or not token:
+        return jsonify({"error": "Email and token are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # check if the user is a creator or not
+    c.execute("SELECT id, role FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+
+    if row[1] != 'creator':
+        return jsonify({"error": "User is not a creator"}), 400
+
+    creator_id = row[0]
+
+    # connect to the user's database
+    user_db_name = get_user_db(email)
+    conn = sqlite3.connect(user_db_name)
+    c = conn.cursor()
+
+    # get all clients from the creator_client_chat_mapping table
+    c.execute("""
+        SELECT id, client_email, is_creator_overtaken, last_chat_timestamp
+        FROM creator_client_chat_mapping
+        ORDER BY last_chat_timestamp DESC
+    """)
+    
+    clients = c.fetchall()
+    conn.close()
+
+    # get the client's name from the central-coordinator database
+    central_conn = sqlite3.connect(db_name)
+    central_c = central_conn.cursor()
+
+    client_list = []
+    for client in clients:
+        central_c.execute("SELECT full_name, username FROM users WHERE email = ?", (client[1],))
+        name_row = central_c.fetchone()
+        client_name = name_row[0] if name_row else "Unknown"
+        username = name_row[1] if name_row else "Unknown"
+        
+        client_list.append({
+            "chat_room_id": client[0],
+            "email": client[1],
+            "full_name": client_name,
+            "lastMessageTimestamp": client[3],
+            "isCreatorOvertaken": client[2],
+            "username": username
+        })
+
+    central_conn.close()
+
+    return jsonify(client_list), 200
+
+@app.route('/acr/get_client_conversation', methods=['GET'])
+def get_client_conversation():
+    email = request.args.get('userEmail')
+    token = request.args.get('token')
+    chat_room_id = request.args.get('chatRoomId')
+
+    if not email or not token or not chat_room_id:
+        return jsonify({"error": "Email, token, and chatRoomId are required"}), 400
+
+    if not decode_token_and_get_email(token) == email:
+        return jsonify({"error": "Invalid token"}), 401
+
+    # connect to the user's database
+    user_db_name = get_user_db(email)
+    conn = sqlite3.connect(user_db_name)
+    c = conn.cursor()
+
+    # get the client's email from the creator_client_chat_mapping table
+    c.execute("SELECT id, client_email, advisorPersonalityName, is_creator_overtaken, last_chat_timestamp FROM creator_client_chat_mapping WHERE id = ?", (chat_room_id,))
+    mapping_obj = c.fetchone()
+
+    if not mapping_obj:
+        return jsonify({"error": "Chat room not found"}), 404
+
+    client_email = mapping_obj[1]
+    advisorPersonalityName = mapping_obj[2]
+
+    # get the conversation between the creator and the client
+    client_db_name = get_user_db(client_email)
+    client_conn = sqlite3.connect(client_db_name)
+    client_c = client_conn.cursor()
+
+    client_c.execute("SELECT role, content, timestamp FROM conversation_history WHERE advisorPersonalityName = ? ORDER BY timestamp", (advisorPersonalityName,))
+    conversation = client_c.fetchall()
+    client_conn.close()
+
+    conn.close()
+
+    return jsonify({"conversation": [{"role": row[0], "content": row[1], "timestamp": row[2]} for row in conversation], "mapping": {"id": mapping_obj[0], "client_email": client_email, "is_creator_overtaken": mapping_obj[3], "last_chat_timestamp": mapping_obj[4]}}), 200
+
 if __name__ == '__main__':
     init_central_coordinator_db()
     app.run(host='0.0.0.0', port=3003, debug=True)

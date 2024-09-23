@@ -120,9 +120,52 @@ def save_conversation(email, role, content, advisorPersonalityName, text_sent_to
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
+    if role == "user":
+        c.execute("UPDATE conversation_history SET is_read = true WHERE role = 'assistant' AND advisorPersonalityName = ?", (advisorPersonalityName,))
+    elif role == "assistant":
+        c.execute("UPDATE conversation_history SET is_read = false WHERE role = 'user' AND advisorPersonalityName = ?", (advisorPersonalityName,))
+
     prompt_details = json.dumps(text_sent_to_ai_in_the_prompt) if role == "assistant" else None
-    c.execute("INSERT INTO conversation_history (role, content, advisorPersonalityName, prompt_details) VALUES (?, ?, ?, ?)", (role, content, advisorPersonalityName, prompt_details))
+    is_read = False
+    c.execute("INSERT INTO conversation_history (role, content, advisorPersonalityName, prompt_details, is_read) VALUES (?, ?, ?, ?, ?)", (role, content, advisorPersonalityName, prompt_details, is_read))
     conn.commit()
+    conn.close()
+
+    handle_client_chat_mapping(email, advisorPersonalityName, role)
+
+def handle_client_chat_mapping(email, advisorPersonalityName, role):
+    # Connect to the central coordinator database
+    central_coordinator_db_name = os.path.join(DATABASE_PATH, "central-coordinator.db")
+    conn = sqlite3.connect(central_coordinator_db_name)
+    c = conn.cursor()
+
+    # Get creator email from users table based on advisorPersonalityName as username
+    c.execute("SELECT email FROM users WHERE username = ? AND role = 'creator'", (advisorPersonalityName,))
+    creator_row = c.fetchone()
+
+    if creator_row:
+        creator_email = creator_row[0]
+        
+        # Connect to the user's database
+        user_db_name = get_user_db(creator_email)
+        user_conn = sqlite3.connect(user_db_name)
+        user_c = user_conn.cursor()
+
+        # Check if the client email and chat id is already in the table
+        user_c.execute("SELECT * FROM creator_client_chat_mapping WHERE client_email = ? AND advisorPersonalityName = ?", (email, advisorPersonalityName))
+        existing_row = user_c.fetchone()
+
+        if not existing_row:
+            # If not found, insert the row
+            user_c.execute("INSERT INTO creator_client_chat_mapping (client_email, advisorPersonalityName) VALUES (?, ?)", (email, advisorPersonalityName))
+            user_conn.commit()
+        else:
+            # If found, update the last_chat_timestamp
+            user_c.execute("UPDATE creator_client_chat_mapping SET last_chat_timestamp = CURRENT_TIMESTAMP WHERE client_email = ? AND advisorPersonalityName = ?", (email, advisorPersonalityName))
+            user_conn.commit()
+
+        user_conn.close()
+
     conn.close()
 
 def handle_allow_user_to_free_chat(email):
@@ -266,6 +309,7 @@ def get_user_db(email):
                  content TEXT NOT NULL,
                  advisorPersonalityName TEXT DEFAULT NULL,
                  prompt_details TEXT DEFAULT NULL,
+                 is_read BOOLEAN DEFAULT FALSE,
                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
@@ -371,4 +415,18 @@ def get_user_db(email):
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
+
+    # Create a table to store the creator_client_chat_mapping data
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS creator_client_chat_mapping
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    client_email TEXT NOT NULL,
+                    advisorPersonalityName TEXT NOT NULL,
+                    is_creator_overtaken BOOLEAN DEFAULT FALSE,
+                    last_chat_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
     return db_name
