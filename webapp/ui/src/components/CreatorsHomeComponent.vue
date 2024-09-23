@@ -3,7 +3,9 @@
     <!-- Header Section -->
     <el-header class="header">
       <div class="logo">
-        TalkTo.app
+        <el-badge value="Beta" class="item" color="#67c23a">
+          TalkTo.app
+        </el-badge>
       </div>
       <el-button type="primary" class="join-button" @click="$router.push('/join/creator')">Join as a Creator</el-button>
     </el-header>
