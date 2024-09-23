@@ -12,6 +12,7 @@ import ConnectWithPeoplePageComponent from './components/ConnectWithPeoplePageCo
 import JoinCreaterComponent from './components/JoinCreaterComponent.vue';
 import EditCreatorProfileComponent from './components/EditCreatorProfileComponent.vue';
 import CreatorsChatRoomComponent from './components/CreatorsChatRoomComponent.vue';
+import CreatorsHomeComponent from './components/CreatorsHomeComponent.vue';
 
 const routes = [
   {
@@ -28,6 +29,11 @@ const routes = [
     path: '/creators/chat-room/:chatRoomId?',
     name: 'CreatorsChatRoom',
     component: CreatorsChatRoomComponent
+  },
+  {
+    path: '/creators/home',
+    name: 'CreatorsHome',
+    component: CreatorsHomeComponent
   },
   {
     path: '/get/demo',
